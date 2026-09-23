@@ -1,0 +1,100 @@
+# Safety, behavior, and ETA threshold defaults.
+# All durations are in seconds (simulation clock).
+# Tune these after the first full simulated run and record changes in memory.md.
+
+safety:
+  debounce_seconds: 2
+
+  seatbelt:
+    warning_grace_seconds: 10
+    critical_grace_seconds: 30
+    cooldown_seconds: 60
+
+  operator_not_seated:
+    critical_grace_seconds: 3
+    cooldown_seconds: 60
+
+  proximity:
+    warning_trigger_meters: 10.0
+    warning_clear_meters: 12.0
+    critical_trigger_meters: 5.0
+    critical_clear_meters: 6.5
+    cooldown_seconds: 30
+
+  tilt:
+    # Expressed as a fraction of the machine's tilt_limit_degrees.
+    warning_trigger_fraction: 0.80
+    warning_clear_fraction: 0.75
+    critical_trigger_fraction: 1.00
+    critical_clear_fraction: 0.95
+    cooldown_seconds: 30
+
+  overload:
+    # payload_pct thresholds.
+    warning_trigger_pct: 105.0
+    warning_clear_pct: 100.0
+    critical_trigger_pct: 120.0
+    critical_clear_pct: 110.0
+    cooldown_seconds: 30
+
+  visibility:
+    warning_trigger_meters: 100.0
+    warning_clear_meters: 120.0
+    critical_trigger_meters: 50.0
+    critical_clear_meters: 60.0
+    cooldown_seconds: 120
+
+  ambient_temperature:
+    warning_trigger_celsius: 35.0
+    warning_clear_celsius: 33.0
+    critical_trigger_celsius: 40.0
+    critical_clear_celsius: 38.0
+    cooldown_seconds: 300
+
+  repeat_escalation:
+    # 3rd WARNING of the same type within this rolling window opens as CRITICAL.
+    applies_to: [seatbelt, proximity, tilt, overload]
+    window_seconds: 1800  # 30 minutes
+    count_threshold: 3
+
+behavior:
+  excessive_idling_seconds: 300          # 5 minutes
+  repeated_overloading_count: 3
+  repeated_seatbelt_count: 2
+  high_rpm_travel_sustained_seconds: 60
+  high_rpm_fraction: 0.85               # fraction of rated_max_rpm
+
+  travel_speed_threshold_kmh:
+    excavator: 3.0
+    wheel_loader: 15.0
+    backhoe_loader: 15.0
+
+  idle_ratio_mad_multiplier: 6.0         # tuned on the training split, about 4 scaled MADs (was 3.0)
+  baseline_min_shifts: 10               # fall back to fleet if fewer than this
+
+eta:
+  # The planning buffer is ETA_BUFFER_MINUTES in settings (environment).
+  revision_pace_deviation_pct: 20.0     # trigger revision when pace off by > 20%
+  revision_completion_threshold_pct: 25.0  # only after 25% of task is done
+  revision_rate_limit_seconds: 600      # 10 minutes between revisions
+
+  model:
+    n_estimators: 150
+    max_depth: 10
+    random_state: 42
+
+training:
+  quiz_pass_pct: 80.0                   # best attempt at or above this counts as passed
+
+assistant:
+  search_top_k: 3                       # manual sections returned per query
+  search_min_score: 0.05                # cosine similarity below this is not a match
+  explain_timeout_seconds: 10.0         # DeepSeek request timeout (rules.md section 5)
+  explain_retries: 1                    # one retry, then retrieval results only
+  explain_max_tokens: 400               # keeps explanations short
+  explain_temperature: 0.2
+
+maintenance:
+  # Share of the service interval used since the last service.
+  due_soon_fraction: 0.90               # "Service due soon" from here
+  overdue_fraction: 1.00                # "Service overdue" from here

@@ -1,0 +1,49 @@
+{
+  "module_id": "fuel-efficient-operation",
+  "questions": [
+    {
+      "question": "You expect to wait 15 minutes for the next truck. What is the best action?",
+      "options": [
+        "Keep the engine at high idle so you are ready",
+        "Shut the engine down, or let automatic shutdown do it",
+        "Travel around the site until the truck arrives",
+        "Raise the bucket and wait"
+      ],
+      "answer": 1,
+      "explanation": "Shutting down during long waits saves fuel and engine hours."
+    },
+    {
+      "question": "Why should you mark a task as blocked while waiting for a truck?",
+      "options": [
+        "It hides the time from the supervisor",
+        "Blocked time is not counted as excessive idling, so the record is fair",
+        "It stops the engine automatically",
+        "It increases the task ETA"
+      ],
+      "answer": 1,
+      "explanation": "Blocked time shows the wait was outside your control."
+    },
+    {
+      "question": "Which habit reduces fuel use during travel?",
+      "options": [
+        "Travelling at maximum engine speed",
+        "Reducing engine speed and keeping routes short",
+        "Spinning the wheels to accelerate faster",
+        "Travelling with the bucket raised high"
+      ],
+      "answer": 1,
+      "explanation": "Lower engine speed and shorter routes cut fuel burn without losing productive work."
+    },
+    {
+      "question": "What swing angle is most efficient when loading trucks?",
+      "options": [
+        "180 degrees",
+        "About 45 to 90 degrees",
+        "360 degrees",
+        "The angle does not matter"
+      ],
+      "answer": 1,
+      "explanation": "A smaller swing angle shortens every cycle."
+    }
+  ]
+}

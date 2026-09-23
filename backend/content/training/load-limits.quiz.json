@@ -1,0 +1,49 @@
+{
+  "module_id": "load-limits",
+  "questions": [
+    {
+      "question": "What payload range is typical for a full, well-shaped bucket?",
+      "options": [
+        "40% to 60%",
+        "85% to 100%",
+        "110% to 125%",
+        "Anything below 150%"
+      ],
+      "answer": 1,
+      "explanation": "A good bucket fill sits close to, but not above, the rated capacity."
+    },
+    {
+      "question": "Why can the same bucket fill be an overload in one material and not in another?",
+      "options": [
+        "Materials have different densities",
+        "The sensor only works in dry material",
+        "Bucket capacity changes with weather",
+        "It cannot, payload is the same for all materials"
+      ],
+      "answer": 0,
+      "explanation": "Wet clay and rock weigh much more per cubic metre than topsoil."
+    },
+    {
+      "question": "How should a heavy load be carried while swinging?",
+      "options": [
+        "High and far from the machine",
+        "Low and close to the machine, with a slow swing",
+        "As fast as possible to reduce cycle time",
+        "Always to the downhill side"
+      ],
+      "answer": 1,
+      "explanation": "Keeping the load low and close keeps the centre of gravity inside the stable area."
+    },
+    {
+      "question": "Repeated overload warnings during a shift usually mean what?",
+      "options": [
+        "The sensor is faulty",
+        "Technique should change, for example smaller bites in dense material",
+        "The machine needs more fuel",
+        "Nothing, warnings can be ignored"
+      ],
+      "answer": 1,
+      "explanation": "Repeated warnings point to a loading habit. Adjust the fill to the material."
+    }
+  ]
+}

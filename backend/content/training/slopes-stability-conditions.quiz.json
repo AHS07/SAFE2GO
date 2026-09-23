@@ -1,0 +1,60 @@
+{
+  "module_id": "slopes-stability-conditions",
+  "questions": [
+    {
+      "question": "What is the safest way to travel on a slope?",
+      "options": [
+        "Across the slope at speed",
+        "Straight up or down, with the attachment low",
+        "Diagonally with the bucket raised",
+        "It does not matter if the seatbelt is fastened"
+      ],
+      "answer": 1,
+      "explanation": "Travelling straight up or down with a low attachment keeps the machine stable."
+    },
+    {
+      "question": "A CRITICAL tilt alert appears. What does it mean?",
+      "options": [
+        "The machine has reached its maximum safe tilt",
+        "The tilt sensor needs calibration",
+        "The machine is at 50% of its limit",
+        "The load is too light"
+      ],
+      "answer": 0,
+      "explanation": "CRITICAL means 100% of the tilt limit. Stop and reduce the angle."
+    },
+    {
+      "question": "Why should you keep back from trench edges?",
+      "options": [
+        "To save fuel",
+        "The ground near the edge can collapse under the machine",
+        "Trench edges block the proximity sensor",
+        "It is only a rule for wheel loaders"
+      ],
+      "answer": 1,
+      "explanation": "The edge carries the most load and is the most likely part of the ground to give way."
+    },
+    {
+      "question": "Visibility drops below 50 m in fog. What should you do?",
+      "options": [
+        "Continue at normal speed",
+        "Turn off work lights to reduce glare",
+        "Slow down, and stop if you cannot see the work area or your spotter",
+        "Rely only on the proximity sensor"
+      ],
+      "answer": 2,
+      "explanation": "Low visibility needs slower work and more distance. Stop if you cannot see clearly."
+    },
+    {
+      "question": "Which is a sign of heat stress?",
+      "options": [
+        "Feeling dizzy or confused",
+        "Feeling hungry",
+        "Cold hands",
+        "Improved concentration"
+      ],
+      "answer": 0,
+      "explanation": "Dizziness and confusion are warning signs. Stop, cool down, drink water, and tell your supervisor."
+    }
+  ]
+}

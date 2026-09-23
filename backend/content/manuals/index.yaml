@@ -1,0 +1,24 @@
+# Original sample manuals written for SAFE2GO. They describe generic
+# machines and are not taken from any manufacturer documentation.
+# machine_type is null for manuals that apply to every machine.
+
+manuals:
+  - manual_id: excavator
+    title: Sample hydraulic excavator manual
+    machine_type: excavator
+    path: manuals/excavator.md
+
+  - manual_id: wheel-loader
+    title: Sample wheel loader manual
+    machine_type: wheel_loader
+    path: manuals/wheel-loader.md
+
+  - manual_id: backhoe-loader
+    title: Sample backhoe loader manual
+    machine_type: backhoe_loader
+    path: manuals/backhoe-loader.md
+
+  - manual_id: site-operations
+    title: Sample site operations guide
+    machine_type: null
+    path: manuals/site-operations.md

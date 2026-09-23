@@ -1,0 +1,83 @@
+{
+  "notice": "General guidance for training and demonstration. Always follow your site emergency plan.",
+  "items": [
+    {
+      "emergency_id": "rollover",
+      "title": "Rollover or tip-over",
+      "summary": "The machine is tipping or has rolled.",
+      "steps": [
+        "Stay in the seat with the seatbelt fastened. Do not jump.",
+        "Hold the steering wheel or armrests and brace your feet.",
+        "When the machine stops moving, shut down the engine.",
+        "Check yourself for injuries before moving.",
+        "Leave the cab only when it is safe, using the exit furthest from the ground contact.",
+        "Call the site emergency contact and keep people away from the machine."
+      ]
+    },
+    {
+      "emergency_id": "fire",
+      "title": "Machine fire",
+      "summary": "Smoke or flames from the engine bay, hydraulics, or cab.",
+      "steps": [
+        "Stop the machine, lower attachments, and set the park brake.",
+        "Shut down the engine and, if fitted, turn off the battery isolator.",
+        "Leave the cab and move upwind, at least 30 m away.",
+        "Call the site emergency contact and raise the alarm.",
+        "Use a fire extinguisher only if the fire is small and you have a clear escape route.",
+        "Do not open engine covers on a large fire. Fresh air can make it worse."
+      ]
+    },
+    {
+      "emergency_id": "contact_with_person",
+      "title": "Contact with a person",
+      "summary": "The machine or attachment has struck or pinned someone.",
+      "steps": [
+        "Stop all movement immediately and hold the controls in neutral.",
+        "Do not move the machine unless moving it is the only way to free a trapped person.",
+        "If you must move it, move slowly and only in the direction that releases the person.",
+        "Shut down the engine and set the park brake once the person is free.",
+        "Call the site emergency contact and request first aid.",
+        "Keep the area clear and stay with the injured person until help arrives."
+      ]
+    },
+    {
+      "emergency_id": "hydraulic_failure",
+      "title": "Hydraulic failure",
+      "summary": "Sudden loss of hydraulic power, a burst hose, or a large leak.",
+      "steps": [
+        "Stop movement and lower the attachment to the ground if it still responds.",
+        "Set the park brake and shut down the engine.",
+        "Keep everyone away from a raised attachment. It may drop without warning.",
+        "Never search for a leak with your hand. Pressurised oil can penetrate skin.",
+        "Tag the machine out of service and report the failure.",
+        "Seek medical help at once for any injury from hydraulic oil, even a small one."
+      ]
+    },
+    {
+      "emergency_id": "medical",
+      "title": "Medical emergency",
+      "summary": "You or a nearby worker feels unwell or is injured.",
+      "steps": [
+        "Stop the machine, lower attachments, and set the park brake.",
+        "Shut down the engine if it is safe to do so.",
+        "Call the site emergency contact and give your location and machine ID.",
+        "If you feel faint, stay seated in the cab until help arrives.",
+        "Give first aid only if you are trained.",
+        "Stay with the person and keep them calm until help arrives."
+      ]
+    },
+    {
+      "emergency_id": "power_line_contact",
+      "title": "Contact with overhead power lines",
+      "summary": "The boom, bucket, or machine has touched or come close to a power line.",
+      "steps": [
+        "Stay in the cab. The machine may be live.",
+        "Try to move the machine away from the line if the controls still work.",
+        "Warn everyone to stay at least 10 m away and not to touch the machine.",
+        "Call the site emergency contact and ask them to have the power cut.",
+        "Leave only if the machine is on fire. Jump clear with both feet together, do not touch the machine and the ground at the same time, then shuffle away with small steps.",
+        "Do not return to the machine until the power company confirms it is safe."
+      ]
+    }
+  ]
+}

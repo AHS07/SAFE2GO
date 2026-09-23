@@ -1,0 +1,49 @@
+# Training catalog. Original content written for SAFE2GO.
+# content_path is relative to the content directory. Each module has a
+# quiz file next to it with the same name and a .quiz.json extension.
+
+modules:
+  - module_id: seatbelt-seat-safety
+    title: Seatbelt and seat safety
+    format: text
+    duration_min: 4
+    content_path: training/seatbelt-seat-safety.md
+
+  - module_id: working-near-people
+    title: Working near people
+    format: text
+    duration_min: 5
+    content_path: training/working-near-people.md
+
+  - module_id: load-limits
+    title: Load limits and bucket loading
+    format: text
+    duration_min: 4
+    content_path: training/load-limits.md
+
+  - module_id: slopes-stability-conditions
+    title: Slopes, stability and site conditions
+    format: text
+    duration_min: 5
+    content_path: training/slopes-stability-conditions.md
+
+  - module_id: fuel-efficient-operation
+    title: Fuel-efficient operation
+    format: text
+    duration_min: 4
+    content_path: training/fuel-efficient-operation.md
+
+# Incident types and behavior event types that point to a module.
+# manual_report is intentionally not mapped.
+recommendation_map:
+  - {source_type: incident, type_value: seatbelt, module_id: seatbelt-seat-safety}
+  - {source_type: incident, type_value: operator_not_seated, module_id: seatbelt-seat-safety}
+  - {source_type: behavior, type_value: repeated_seatbelt_violation, module_id: seatbelt-seat-safety}
+  - {source_type: incident, type_value: proximity, module_id: working-near-people}
+  - {source_type: incident, type_value: overloading, module_id: load-limits}
+  - {source_type: behavior, type_value: repeated_overloading, module_id: load-limits}
+  - {source_type: incident, type_value: tilt, module_id: slopes-stability-conditions}
+  - {source_type: incident, type_value: working_condition, module_id: slopes-stability-conditions}
+  - {source_type: behavior, type_value: excessive_idling, module_id: fuel-efficient-operation}
+  - {source_type: behavior, type_value: high_idle_ratio, module_id: fuel-efficient-operation}
+  - {source_type: behavior, type_value: high_rpm_travel, module_id: fuel-efficient-operation}

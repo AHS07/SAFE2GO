@@ -1,0 +1,70 @@
+# Session memory (never committed)
+memory.md
+
+# Project planning docs (local only)
+about/
+docs/
+
+# Environment — never commit real values
+.env
+.env.local
+.env.*.local
+.env.*
+*.env
+# Re-allow the example file
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ML artifacts (generated — large binary files)
+backend/ml/artifacts/
+
+# Generated dataset output
+backend/simulator/batch/output/
+
+# Alembic compiled cache
+backend/alembic/**/__pycache__/
+
+# Evaluation output
+backend/evaluation/output/
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# Vite build output
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Kiro
+.kiro/
+
+# Docker volume data (if ever mounted locally)
+postgres_data/

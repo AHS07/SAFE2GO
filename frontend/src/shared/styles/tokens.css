@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+/*
+ * SAFE2GO design tokens.
+ * Tailwind v4 reads the theme from @theme below. Utilities such as
+ * bg-panel, border-line, text-brand, font-display and shadow-hud come
+ * from these values. Use them instead of hard-coded colors.
+ */
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
+
+  /* Surfaces, darkest to lightest */
+  --color-ink: #0d0f12;
+  --color-panel-head: #0f1115;
+  --color-panel: #14171c;
+  --color-well: #181b20;
+  --color-raised: #1e2229;
+  --color-raised-hover: #252a33;
+  --color-line: #2a303c;
+  --color-line-strong: #3a4252;
+
+  /* Safety yellow accent */
+  --color-brand: #ffcd11;
+  --color-brand-dark: #d4a000;
+
+  --shadow-hud: 0 8px 32px -4px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 205 17 / 0.12);
+}
+
+:root {
+  color-scheme: dark;
+  /* Minimum touch target, prd.md section 6 */
+  --touch-min: 3rem;
+}
+
+body {
+  background-color: var(--color-ink);
+}
+
+/* Material Symbols icon alignment */
+.material-symbols-outlined {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* Page background: fine dot grid */
+.app-grid-bg {
+  background-color: var(--color-ink);
+  background-image:
+    radial-gradient(rgb(255 205 17 / 0.05) 1px, transparent 0),
+    linear-gradient(to right, rgb(255 255 255 / 0.02) 1px, transparent 1px);
+  background-size: 24px 24px, 120px 120px;
+}
+
+/* Red and black hazard stripe for the emergency control */
+.hazard-stripe {
+  background: repeating-linear-gradient(-45deg, #dc2626, #dc2626 10px, #111315 10px, #111315 20px);
+}
+
+/* Glass panel for overlays on the camera view */
+.hud-reticle {
+  background: rgb(15 17 21 / 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgb(255 205 17 / 0.35);
+  box-shadow: 0 8px 32px -4px rgb(0 0 0 / 0.6);
+}
+
+.tactile-btn {
+  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+.tactile-btn:active:not(:disabled) {
+  transform: translateY(1.5px) scale(0.985);
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.pulse-dot {
+  animation: pulse-subtle 1.8s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot,
+  .animate-pulse,
+  .animate-spin,
+  .animate-ping,
+  .animate-bounce {
+    animation: none;
+  }
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111315; }
+::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-brand); }

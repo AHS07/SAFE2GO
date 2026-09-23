@@ -1,0 +1,60 @@
+{
+  "module_id": "seatbelt-seat-safety",
+  "questions": [
+    {
+      "question": "When should the seatbelt be fastened?",
+      "options": [
+        "Only when travelling on public roads",
+        "Before releasing the park brake or selecting a gear",
+        "After the first work cycle",
+        "Only on slopes"
+      ],
+      "answer": 1,
+      "explanation": "Fasten the belt before the machine is able to move and keep it fastened while it can move."
+    },
+    {
+      "question": "The machine starts to tip over. What is the correct action?",
+      "options": [
+        "Jump clear on the downhill side",
+        "Open the door and jump uphill",
+        "Stay in the seat with the belt fastened and brace yourself",
+        "Stand up to see where the machine will land"
+      ],
+      "answer": 2,
+      "explanation": "The cab is built to protect you during a rollover. Jumping clear risks being crushed by the machine."
+    },
+    {
+      "question": "What should you do before leaving the cab?",
+      "options": [
+        "Leave the engine running and the bucket raised",
+        "Lower attachments, set the park brake, and engage the control lockout",
+        "Unfasten the belt while still moving to save time",
+        "Put the machine in neutral only"
+      ],
+      "answer": 1,
+      "explanation": "Lowered attachments, the park brake, and the lockout stop unexpected movement while you are away."
+    },
+    {
+      "question": "How should you climb in or out of the cab?",
+      "options": [
+        "Face away from the machine and step down quickly",
+        "Jump from the tracks",
+        "Face the machine and keep three points of contact",
+        "Hold the door with one hand only"
+      ],
+      "answer": 2,
+      "explanation": "Facing the machine with three points of contact prevents most falls on steps."
+    },
+    {
+      "question": "You cannot see the area behind the machine. What should you do?",
+      "options": [
+        "Stand up in the cab to look",
+        "Lean out of the door while reversing slowly",
+        "Stop and ask for a spotter",
+        "Unfasten the belt to turn around"
+      ],
+      "answer": 2,
+      "explanation": "Stay in the seat and use a spotter. Leaning out puts you outside the protected space."
+    }
+  ]
+}

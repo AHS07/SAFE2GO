@@ -1,0 +1,21 @@
+/* Icon font: a subset of Material Symbols Outlined (one style, only the icons in use).
+   Built by scripts/subset_icons.py; icons are addressed by code point. */
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 500;
+  font-display: block;
+  src: url("./material-symbols-subset.woff2") format("woff2");
+}
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}

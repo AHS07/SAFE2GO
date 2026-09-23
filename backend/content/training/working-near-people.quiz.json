@@ -1,0 +1,60 @@
+{
+  "module_id": "working-near-people",
+  "questions": [
+    {
+      "question": "A CRITICAL proximity alert appears. What is the first thing to do?",
+      "options": [
+        "Acknowledge the alert and keep working",
+        "Stop movement and hold the controls in neutral",
+        "Reverse away quickly",
+        "Swing the upper structure to look around"
+      ],
+      "answer": 1,
+      "explanation": "Stop first, then find the person or object. Moving quickly may bring the machine closer to someone you cannot see."
+    },
+    {
+      "question": "Which area is a major blind spot on an excavator?",
+      "options": [
+        "The bucket teeth when the bucket is on the ground",
+        "The area directly in front of the cab window",
+        "The rear counterweight and the side opposite the boom",
+        "The top of the cab"
+      ],
+      "answer": 2,
+      "explanation": "The counterweight and the far side of the boom are hard to see from the seat."
+    },
+    {
+      "question": "You lose sight of your spotter. What should you do?",
+      "options": [
+        "Continue with the last signal given",
+        "Stop immediately",
+        "Sound the horn and keep going",
+        "Speed up to finish the move"
+      ],
+      "answer": 1,
+      "explanation": "Stop as soon as you cannot see the spotter. Their signals are only useful while you can see them."
+    },
+    {
+      "question": "Whose stop signal must you follow?",
+      "options": [
+        "Only the assigned spotter",
+        "Only the site supervisor",
+        "Anyone who gives it",
+        "Nobody while the alert is active"
+      ],
+      "answer": 2,
+      "explanation": "Follow a stop signal from anyone. Other signals come only from the assigned spotter."
+    },
+    {
+      "question": "Why is the swing radius dangerous?",
+      "options": [
+        "It raises engine temperature",
+        "A person inside it can be struck or pinned when the upper structure turns",
+        "It reduces bucket capacity",
+        "It only matters when travelling"
+      ],
+      "answer": 1,
+      "explanation": "The rear of the machine sweeps a circle when rotating. Keep that area clear or barricaded."
+    }
+  ]
+}
