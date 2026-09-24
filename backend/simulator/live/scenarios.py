@@ -86,6 +86,17 @@ class ScenarioInjector:
             "proximity_breach", duration_seconds, {"proximity_distance": distance_m}, machine_id
         )
 
+    def proximity_sensor_fault(
+        self, duration_seconds: int = 30, machine_id: str | None = None
+    ) -> ScenarioWindow:
+        """The proximity sensor reports a fault: its distance is unknown."""
+        return self.inject(
+            "proximity_sensor_fault",
+            duration_seconds,
+            {"proximity_sensor_ok": False, "proximity_distance": None},
+            machine_id,
+        )
+
     def overload(
         self, payload_pct: float = 125.0, duration_seconds: int = 120, machine_id: str | None = None
     ) -> ScenarioWindow:

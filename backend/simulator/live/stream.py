@@ -128,6 +128,7 @@ class LiveStream:
             "park_brake": True,
             "gear_state": "park",
             "proximity_distance": None,
+            "proximity_sensor_ok": True,
             "ambient_temp": round(float(rng.uniform(*_AMBIENT_TEMP_C)), 2),
             "visibility": round(float(rng.uniform(*_VISIBILITY_M)), 1),
             "tilt_angle": round(

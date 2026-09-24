@@ -305,6 +305,7 @@ def _tick(site: dict, second: int, **overrides) -> TelemetryTick:
         "hydraulic_active": True, "machine_speed": 0.0, "load_cycles": 0, "payload_pct": 50.0,
         "seatbelt_status": "fastened", "seat_occupied": True, "park_brake": True, "gear_state": "park",
         "ambient_temp": 25.0, "visibility": 400.0, "tilt_angle": 2.0,
+        "proximity_sensor_ok": True,
     }
     raw.update(overrides)
     return TelemetryTick.model_validate(raw)

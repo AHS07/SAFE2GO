@@ -92,6 +92,7 @@ async def set_speed(body: SpeedRequest) -> SpeedResponse:
 
 _SCENARIOS = {
     "proximity": scenario_injector.proximity_breach,
+    "sensor_fault": scenario_injector.proximity_sensor_fault,
     "overload": scenario_injector.overload,
     "seatbelt": scenario_injector.seatbelt_removal,
     "idling": scenario_injector.excessive_idling,

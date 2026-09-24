@@ -15,6 +15,7 @@ import { useDemo } from "./DemoContext";
 
 const SCENARIOS: { name: ScenarioName; label: string; icon: IconName }[] = [
   { name: "proximity", label: "Person nearby", icon: "radar" },
+  { name: "sensor_fault", label: "Sensor fault", icon: "sensors_off" },
   { name: "overload", label: "Overload", icon: "weight" },
   { name: "seatbelt", label: "Seatbelt off", icon: "airline_seat_recline_extra" },
   { name: "tilt", label: "Tilt", icon: "screen_rotation" },
@@ -133,6 +134,7 @@ function PresenterControls(): React.ReactElement | null {
 function scenarioWindowName(name: ScenarioName): string {
   const windows: Record<ScenarioName, string> = {
     proximity: "proximity_breach",
+    sensor_fault: "proximity_sensor_fault",
     overload: "overload",
     seatbelt: "seatbelt_removal",
     idling: "excessive_idling",

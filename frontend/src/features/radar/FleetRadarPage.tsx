@@ -67,7 +67,14 @@ export default function FleetRadarPage(): React.ReactElement {
   const incident = incidents.find((i) => i.incident_type === "proximity" && i.status !== "resolved" && !i.event_end);
   const tone = incident ? (incident.peak_severity === "critical" ? "critical" : "warning") : live ? "ok" : "neutral";
 
-  const reading = !live ? "No data" : distance === null ? "Nothing in range" : number(distance, 1, "m");
+  const sensorFault = live && status?.proximity_sensor_ok === false;
+  const reading = !live
+    ? "No data"
+    : sensorFault
+      ? "Sensor fault"
+      : distance === null
+        ? "Nothing in range"
+        : number(distance, 1, "m");
 
   return (
     <div className="flex flex-1 flex-col space-y-4 pb-6">

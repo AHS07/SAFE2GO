@@ -50,6 +50,7 @@ def make_tick(**overrides: Any) -> TelemetryTick:
         ambient_temp=25.0,
         visibility=300.0,
         tilt_angle=5.0,
+        proximity_sensor_ok=True,
     )
     defaults.update(overrides)
     return TelemetryTick(**defaults)

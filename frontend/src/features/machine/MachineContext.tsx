@@ -69,6 +69,7 @@ function statusFromTick(tick: TelemetryTick): MachineStatus {
     park_brake: tick.park_brake,
     gear_state: tick.gear_state,
     proximity_distance: tick.proximity_distance,
+    proximity_sensor_ok: tick.proximity_sensor_ok,
     ambient_temp: tick.ambient_temp,
     visibility: tick.visibility,
     tilt_angle: tick.tilt_angle,
@@ -81,7 +82,7 @@ function unknownStatus(machineId: string): MachineStatus {
     machine_id: machineId, live: false, parked: false, timestamp: null, engine_running: null,
     engine_rpm: null, engine_hours: null, fuel_used: null, hydraulic_active: null,
     machine_speed: null, payload_pct: null, seatbelt_status: null, seat_occupied: null,
-    park_brake: null, gear_state: null, proximity_distance: null, ambient_temp: null,
+    park_brake: null, gear_state: null, proximity_distance: null, proximity_sensor_ok: null, ambient_temp: null,
     visibility: null, tilt_angle: null, task_id: null,
   };
 }
@@ -168,7 +169,13 @@ export function MachineProvider({ children }: { children: React.ReactNode }): Re
           setTasks((prev) =>
             prev.map((t) =>
               t.task_id === update.task_id
-                ? { ...t, status: update.status, completed_quantity: update.completed_quantity }
+                ? {
+                    ...t,
+                    status: update.status,
+                    completed_quantity: update.completed_quantity,
+                    eta_minutes: update.eta_minutes,
+                    eta_revision_reason: update.eta_revision_reason,
+                  }
                 : t
             )
           );
@@ -186,6 +193,9 @@ export function MachineProvider({ children }: { children: React.ReactNode }): Re
           break;
         case "safety_degraded":
           setDegradedRules((prev) => (prev.includes(message.data.rule) ? prev : [...prev, message.data.rule]));
+          break;
+        case "safety_restored":
+          setDegradedRules((prev) => prev.filter((rule) => rule !== message.data.rule));
           break;
         case "ping":
           break;

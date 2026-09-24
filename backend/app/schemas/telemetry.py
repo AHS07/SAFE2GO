@@ -35,7 +35,12 @@ class TelemetryTick(BaseModel):
     seat_occupied: bool
     park_brake: bool
     gear_state: str             # "neutral" | "forward" | "reverse" | "park"
+    # Nearest object in metres; None means nothing in range. Only meaningful while
+    # proximity_sensor_ok is true: a faulty sensor makes the distance unknown,
+    # which the safety engine never treats as clear (PRD F2.9). Required, so a
+    # source must state the sensor's health rather than have it assumed.
     proximity_distance: float | None = Field(default=None, ge=0)
+    proximity_sensor_ok: bool
 
     # Working conditions
     ambient_temp: float

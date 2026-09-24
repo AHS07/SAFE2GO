@@ -1,8 +1,15 @@
 """Telemetry adapter interface.
 
-All telemetry sources (live simulator, future real telematics) must
-implement TelemetryAdapter. The rest of the system only depends on
+All telemetry sources (live simulator, future real telematics via MQTT/CAN bus)
+must implement TelemetryAdapter. The rest of the system only depends on
 this interface, never on a concrete source.
+
+Hardware Telematics Integration Note:
+When connecting a physical in-cab CAN bus or MQTT telemetry feed:
+- Telemetry ticks are normalized into `TelemetryTick` schema.
+- Ticks are fed directly to `EdgePipeline.process(tick)`.
+- The simulation clock driver and auto-slow hooks are strictly simulation-only
+  fixtures and are bypassed entirely in hardware production mode.
 """
 from __future__ import annotations
 

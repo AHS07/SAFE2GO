@@ -42,7 +42,7 @@ from app.db.models.cloud.edge_records import CloudBehaviorEvent, CloudIncident
 from app.db.models.cloud.machine import Machine
 from app.db.models.cloud.operator import Operator, OperatorQualification
 from app.db.models.cloud.shift import Shift
-from app.db.models.cloud.sync import CloudInbox, CloudOutbox
+from app.db.models.cloud.sync import CloudDeadLetter, CloudInbox, CloudOutbox
 from app.db.models.cloud.task import Task
 from app.db.models.cloud.training import QuizResult
 from app.db.models.cloud.user import AuditLog, OfflineCredential, User
@@ -58,7 +58,7 @@ from app.db.models.edge.assignment import (
 )
 from app.db.models.edge.behavior import BehaviorEvent, Recommendation
 from app.db.models.edge.incident import Incident
-from app.db.models.edge.sync import EdgeInbox, EdgeOutbox
+from app.db.models.edge.sync import EdgeDeadLetter, EdgeInbox, EdgeOutbox
 from app.db.models.edge.telemetry import Telemetry
 from app.db.models.edge.training import EdgeAnomalyTrainingMap, EdgeQuizResult, EdgeTrainingModule
 from app.shared.enums import (
@@ -110,6 +110,7 @@ _EDGE_COPIES = (
     EdgeTrainingModule,
     EdgeInbox,
     EdgeOutbox,
+    EdgeDeadLetter,
 )
 
 
@@ -125,7 +126,7 @@ async def clear_previous_demo(session: AsyncSession) -> None:
     for model in _EDGE_COPIES:
         await session.execute(delete(model))
 
-    for model in (SyncConflict, CloudIncident, CloudBehaviorEvent, AuditLog, CloudOutbox, CloudInbox):
+    for model in (SyncConflict, CloudIncident, CloudBehaviorEvent, AuditLog, CloudOutbox, CloudInbox, CloudDeadLetter):
         await session.execute(delete(model))
     for model in (Task, ShiftSummary, OfflineCredential):
         await session.execute(delete(model).where(model.shift_id.in_(live_shifts)))

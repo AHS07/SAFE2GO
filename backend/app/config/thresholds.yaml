@@ -71,6 +71,7 @@ behavior:
 
   idle_ratio_mad_multiplier: 6.0         # tuned on the training split, about 4 scaled MADs (was 3.0)
   baseline_min_shifts: 10               # fall back to fleet if fewer than this
+  max_tick_gap_seconds: 5.0             # longest gap between ticks counted as engine time
 
 eta:
   # The planning buffer is ETA_BUFFER_MINUTES in settings (environment).

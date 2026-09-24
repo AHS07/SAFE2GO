@@ -11,7 +11,7 @@ from app.db.models.edge.assignment import (
 )
 from app.db.models.edge.behavior import BehaviorEvent, Recommendation
 from app.db.models.edge.incident import Incident
-from app.db.models.edge.sync import EdgeInbox, EdgeOutbox
+from app.db.models.edge.sync import EdgeDeadLetter, EdgeInbox, EdgeOutbox
 from app.db.models.edge.telemetry import Telemetry
 from app.db.models.edge.training import EdgeAnomalyTrainingMap, EdgeQuizResult, EdgeTrainingModule
 
@@ -22,6 +22,7 @@ __all__ = [
     "Recommendation",
     "EdgeOutbox",
     "EdgeInbox",
+    "EdgeDeadLetter",
     "EdgeMachine",
     "EdgeOperator",
     "EdgeOperatorQualification",

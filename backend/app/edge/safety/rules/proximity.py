@@ -32,7 +32,11 @@ def evaluate(
 ) -> EvaluationResult:
     t = get_thresholds().safety.proximity
 
-    # None = no object in range = safe.
+    # Sensor fault: the distance is unknown, which is never treated as clear.
+    if not tick.proximity_sensor_ok:
+        return machine.hold_unknown()
+
+    # A working sensor with no distance means nothing is in range.
     if tick.proximity_distance is None:
         return machine.evaluate(sim_ts, condition_active=False)
 

@@ -49,6 +49,12 @@ function Progress({ task }: { task: Task }): React.ReactElement {
   );
 }
 
+// Why the machine revised the estimate. Still one ETA number (rules.md).
+const REVISION_NOTE: Record<string, string> = {
+  weather: "Updated for the current weather",
+  pace: "Updated for your current pace",
+};
+
 export default function CurrentTaskPanel(): React.ReactElement {
   const { tasks, runTaskAction, completionPromptTaskId, dismissCompletionPrompt } = useMachine();
   const [busy, setBusy] = useState(false);
@@ -105,6 +111,9 @@ export default function CurrentTaskPanel(): React.ReactElement {
           <div>
             <div className="font-mono text-[10px] font-bold uppercase text-brand">Estimated time</div>
             <div className="font-display text-xl font-bold text-white">{duration(task.eta_minutes)}</div>
+            {task.eta_revision_reason && (
+              <div className="mt-0.5 text-xs text-slate-300">{REVISION_NOTE[task.eta_revision_reason] ?? "Updated on the machine"}</div>
+            )}
           </div>
           {task.eta_from_history && <Badge tone="neutral">Estimate based on history</Badge>}
         </div>

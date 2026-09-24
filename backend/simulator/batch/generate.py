@@ -57,7 +57,7 @@ _TELEMETRY_COLUMNS = (
     "engine_running", "engine_rpm", "engine_hours", "fuel_used",
     "hydraulic_active", "machine_speed", "load_cycles", "payload_pct",
     "cycle_payload_pct", "seatbelt_status", "seat_occupied", "park_brake",
-    "gear_state", "proximity_distance", "ambient_temp", "visibility", "tilt_angle",
+    "gear_state", "proximity_distance", "proximity_sensor_ok", "ambient_temp", "visibility", "tilt_angle",
 )
 
 

@@ -161,3 +161,4 @@ class AuditAction(StrEnum):
     INCIDENT_ACKNOWLEDGE = "incident_acknowledge"
     INCIDENT_REPORT = "incident_report"
     CONFLICT_RESOLVE = "conflict_resolve"
+    SYNC_RETRY = "sync_retry"

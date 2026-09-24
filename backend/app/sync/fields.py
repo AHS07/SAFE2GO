@@ -58,6 +58,7 @@ TASK_EDGE_FIELDS = (
     "blocked_minutes",
     "revised_predicted_time",
     "revised_at",
+    "revision_reason",
 )
 
 INCIDENT_FIELDS = (

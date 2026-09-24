@@ -95,6 +95,7 @@ def _valid_tick() -> dict:
         "ambient_temp": 30.0,
         "visibility": 400.0,
         "tilt_angle": 5.0,
+        "proximity_sensor_ok": True,
     }
 
 
@@ -253,11 +254,36 @@ async def test_ws_manager_broadcast_sends_to_all() -> None:
 
     await manager.connect("M001", ws1)
     await manager.connect("M001", ws2)
+    await manager.send_state_snapshot("M001", ws1, {})
+    await manager.send_state_snapshot("M001", ws2, {})
 
     await manager.broadcast("M001", {"type": "ping"})
 
-    ws1.send_json.assert_called_once_with({"type": "ping"})
-    ws2.send_json.assert_called_once_with({"type": "ping"})
+    ws1.send_json.assert_called_with({"type": "ping"})
+    ws2.send_json.assert_called_with({"type": "ping"})
+
+
+@pytest.mark.asyncio
+async def test_ws_updates_before_the_snapshot_are_held_then_sent_in_order() -> None:
+    from app.api.ws.manager import ConnectionManager
+
+    manager = ConnectionManager()
+    ws = AsyncMock()
+    ws.accept = AsyncMock()
+    ws.send_json = AsyncMock()
+
+    await manager.connect("M001", ws)
+    await manager.broadcast("M001", {"type": "incident", "n": 1})
+    await manager.broadcast("M001", {"type": "progress", "n": 2})
+    ws.send_json.assert_not_called()
+
+    await manager.send_state_snapshot("M001", ws, {"shift": None})
+    sent = [c.args[0] for c in ws.send_json.call_args_list]
+    assert sent == [
+        {"type": "state", "data": {"shift": None}},
+        {"type": "incident", "n": 1},
+        {"type": "progress", "n": 2},
+    ]
 
 
 @pytest.mark.asyncio
@@ -270,6 +296,6 @@ async def test_ws_manager_dead_connection_removed_on_broadcast() -> None:
     ws.send_json = AsyncMock(side_effect=Exception("connection closed"))
 
     await manager.connect("M001", ws)
-    await manager.broadcast("M001", {"type": "ping"})
+    await manager.send_state_snapshot("M001", ws, {})
 
     assert manager.connection_count("M001") == 0

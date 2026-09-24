@@ -8,8 +8,11 @@ operator's WebSocket channel.
 Engines are created per machine and rebuilt when the machine's shift
 changes. The end-of-shift check (idle ratio) runs once per shift: when the
 machine moves to a new shift, or when end_shift is called (demo control).
-A failure while processing one tick is logged and rolled back; the next
-tick is processed normally.
+
+A tick is one transaction. The engines are checkpointed before it and
+restored if it rolls back, so their in-memory state never runs ahead of the
+database; WebSocket messages and auto-slow changes are sent only after the
+commit. A failed tick is logged and the next tick is processed normally.
 """
 from __future__ import annotations
 
@@ -35,6 +38,7 @@ from app.edge.telemetry.ingest import ingest_tick
 from app.edge.training.recommendations import recommend_for_source
 from app.schemas.telemetry import TelemetryTick
 from app.shared.enums import TaskStatus
+from app.shared.eta_model import displayed_eta
 
 log = logging.getLogger("safe2go.edge_pipeline")
 
@@ -60,12 +64,20 @@ class EdgePipeline:
         self._broadcast = broadcast
         self._clock_driver = clock_driver
         self._contexts: dict[str, MachineContext] = {}
+        # Pipeline-level WebSocket messages for the current tick (sent after commit).
+        self._effects: list[dict] = []
 
     async def process(self, tick: TelemetryTick) -> None:
         progress: dict | None = None
+        self._effects = []
+        saved: list[tuple[Any, dict]] = []
         async with self._session_factory() as session:
             try:
-                ctx = await self._context_for(tick, session)
+                ctx, previous = await self._context_for(tick, session)
+                saved = [(engine, engine.checkpoint()) for engine in _engines(ctx, previous)]
+                if previous is not None:
+                    # The machine moved on to a new shift: close out the previous one.
+                    await _close_shift(previous, tick.timestamp, session)
                 task = await session.get(EdgeTask, tick.task_id) if tick.task_id else None
                 await ingest_tick(
                     tick,
@@ -75,11 +87,16 @@ class EdgePipeline:
                     task_status=task.status if task else None,
                 )
                 if task is not None and _completes_cycle(tick, task):
-                    await record_cycle(task, tick.cycle_payload_pct, ctx.bucket_capacity, session)
+                    # One call per cycle reported in this tick; cycle_payload_pct is their average.
+                    for _ in range(tick.load_cycles):
+                        await record_cycle(task, tick.cycle_payload_pct, ctx.bucket_capacity, session)
                     progress = _progress_message(task)
                 await session.commit()
             except Exception as exc:
                 await session.rollback()
+                for engine, checkpoint in saved:
+                    engine.restore(checkpoint)
+                self._effects = []
                 log.error(
                     "Tick processing failed",
                     extra={"machine_id": tick.machine_id, "error": str(exc)},
@@ -87,6 +104,14 @@ class EdgePipeline:
                 )
                 return
 
+        if self._contexts.get(tick.machine_id) is not ctx:
+            if previous is not None:
+                ctx.safety.adopt_unresolved(previous.safety.release_unresolved())
+            self._install(tick.machine_id, ctx)
+        for engine in _engines(previous, ctx):
+            await engine.flush_effects()
+        for message in self._effects:
+            await self._safe_broadcast(tick.machine_id, message)
         state.record_tick(tick)
         await self._safe_broadcast(tick.machine_id, {"type": "telemetry", "data": tick.model_dump(mode="json")})
         if progress is not None:
@@ -100,9 +125,17 @@ class EdgePipeline:
         ctx = self._contexts.get(machine_id)
         if ctx is None:
             return False
+        saved = ctx.behavior.checkpoint()
         async with self._session_factory() as session:
-            await _close_shift(ctx, at, session)
-            await session.commit()
+            try:
+                await _close_shift(ctx, at, session)
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                # Not marked ended, so the presenter can run it again.
+                ctx.behavior.restore(saved)
+                raise
+        await ctx.behavior.flush_effects()
         log.info("Shift end check run", extra={"machine_id": machine_id, "shift_id": ctx.shift_id})
         return True
 
@@ -118,13 +151,15 @@ class EdgePipeline:
     # Engine setup
     # ------------------------------------------------------------------
 
-    async def _context_for(self, tick: TelemetryTick, session: AsyncSession) -> MachineContext:
-        ctx = self._contexts.get(tick.machine_id)
-        if ctx is not None and ctx.shift_id == tick.shift_id:
-            return ctx
-        if ctx is not None:
-            # The machine moved on to a new shift: close out the previous one.
-            await _close_shift(ctx, tick.timestamp, session)
+    async def _context_for(
+        self, tick: TelemetryTick, session: AsyncSession
+    ) -> tuple[MachineContext, MachineContext | None]:
+        """The engines for this tick's shift, and the previous shift's engines when
+        the machine has just changed shift. A new context is installed only after
+        the tick commits (see process)."""
+        current = self._contexts.get(tick.machine_id)
+        if current is not None and current.shift_id == tick.shift_id:
+            return current, None
 
         machine = await session.get(EdgeMachine, tick.machine_id)
         shift = await session.get(EdgeShift, tick.shift_id)
@@ -151,17 +186,19 @@ class EdgePipeline:
         safety.add_incident_listener(_notify_behavior(behavior))
         safety.add_incident_listener(self._recommend_for_incident)
 
-        safety_registry.register_engine(safety)
-        behavior_registry.register_engine(behavior)
         ctx = MachineContext(
             shift_id=tick.shift_id,
             bucket_capacity=machine.bucket_capacity,
             safety=safety,
             behavior=behavior,
         )
-        self._contexts[tick.machine_id] = ctx
-        log.info("Edge engines ready", extra={"machine_id": tick.machine_id, "shift_id": tick.shift_id})
-        return ctx
+        return ctx, current
+
+    def _install(self, machine_id: str, ctx: MachineContext) -> None:
+        safety_registry.register_engine(ctx.safety)
+        behavior_registry.register_engine(ctx.behavior)
+        self._contexts[machine_id] = ctx
+        log.info("Edge engines ready", extra={"machine_id": machine_id, "shift_id": ctx.shift_id})
 
     async def _recommend_for_incident(
         self, incident_type: str, incident_id: str, tick: TelemetryTick, session: AsyncSession
@@ -176,7 +213,8 @@ class EdgePipeline:
             created_at=tick.timestamp,
         )
         if outcome is not None and outcome.created:
-            await self._safe_broadcast(tick.machine_id, {
+            # Sent after the tick commits, with the engines' own messages.
+            self._effects.append({
                 "type": "recommendation",
                 "data": {
                     "module_id": outcome.module_id,
@@ -219,6 +257,10 @@ def _completes_cycle(tick: TelemetryTick, task: EdgeTask) -> bool:
     )
 
 
+def _engines(*contexts: MachineContext | None) -> list[Any]:
+    return [engine for ctx in contexts if ctx is not None for engine in (ctx.safety, ctx.behavior)]
+
+
 def _progress_message(task: EdgeTask) -> dict:
     completed = task.completed_quantity or 0.0
     return {
@@ -227,4 +269,7 @@ def _progress_message(task: EdgeTask) -> dict:
         "completed_quantity": completed,
         "target_quantity": task.target_quantity,
         "target_reached": completed >= task.target_quantity,
+        # The one ETA the operator sees, and why it last changed ("weather", "pace", or null).
+        "eta_minutes": displayed_eta(task.planning_eta, task.revised_predicted_time),
+        "eta_revision_reason": task.revision_reason,
     }

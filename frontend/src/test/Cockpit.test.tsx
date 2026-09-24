@@ -46,6 +46,7 @@ function tick(overrides: Record<string, unknown> = {}) {
     park_brake: false,
     gear_state: "neutral",
     proximity_distance: null,
+    proximity_sensor_ok: true,
     ambient_temp: 28,
     visibility: 400,
     tilt_angle: 3.5,
@@ -132,7 +133,10 @@ describe("Cockpit wiring", () => {
     await screen.findByText("Alex Beginner");
     FakeSocket.latest.push({
       type: "progress",
-      data: { task_id: "t-1", status: "in_progress", completed_quantity: 121, target_quantity: 120, target_reached: true },
+      data: {
+        task_id: "t-1", status: "in_progress", completed_quantity: 121, target_quantity: 120, target_reached: true,
+        eta_minutes: 95, eta_revision_reason: null,
+      },
     });
     expect(await screen.findByText(/Target quantity reached/)).toBeInTheDocument();
     expect(calls.some((c) => c.url.endsWith("/complete"))).toBe(false);

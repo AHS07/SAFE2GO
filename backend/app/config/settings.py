@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     # Sync worker: poll interval and retry backoff ceiling (real seconds).
     sync_poll_seconds: float = 1.0
     sync_backoff_max_seconds: float = 60.0
+    # A message failing for this long (real time, link up) moves to dead letters.
+    sync_dead_letter_after_seconds: float = 3600.0
     eta_model_path: Path = _DEFAULT_ETA_MODEL_PATH
     content_dir: Path = _DEFAULT_CONTENT_DIR
 

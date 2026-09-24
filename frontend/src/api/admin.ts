@@ -6,6 +6,7 @@ import type {
   AdminShift,
   AdminTask,
   AssignmentResponse,
+  DeadLetter,
   EtaBreakdown,
   ShiftCreate,
   ShiftReport,
@@ -37,6 +38,13 @@ export const adminApi = {
   eta: (token: string, taskId: string) => apiClient.get<EtaBreakdown>(`/api/admin/tasks/${id(taskId)}/eta`, { token }),
   conflicts: (token: string) =>
     apiClient.get<SyncConflict[]>("/api/admin/conflicts?include_resolved=true", { token }),
+  deadLetters: (token: string) => apiClient.get<DeadLetter[]>("/api/admin/sync/dead-letters", { token }),
+  retryDeadLetter: (token: string, messageId: string) =>
+    apiClient.post<{ message_id: string; direction: string }>(
+      `/api/admin/sync/dead-letters/${id(messageId)}/retry`,
+      undefined,
+      { token }
+    ),
   resolveConflict: (token: string, conflictId: string) =>
     apiClient.post<SyncConflict>(`/api/admin/conflicts/${id(conflictId)}/resolve`, undefined, { token }),
 };

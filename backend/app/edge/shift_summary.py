@@ -3,13 +3,19 @@
 Same metrics as the batch summaries: idle means engine running with no
 hydraulic activity and the machine stopped. Built from the live ticks the
 edge stored for the shift.
+
+Each tick stands for the time since the previous tick, capped at
+behavior.max_tick_gap_seconds (the first tick counts as one nominal tick),
+the same rule the behavior engine uses, so both agree when ticks arrive at
+uneven intervals.
 """
 from __future__ import annotations
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.settings import get_settings
+from app.config.thresholds import get_thresholds
 from app.db.models.edge.assignment import EdgeTask
 from app.db.models.edge.telemetry import Telemetry
 from app.shared.enums import TaskStatus
@@ -19,17 +25,32 @@ _SECONDS_PER_HOUR = 3600.0
 
 async def build_shift_summary(session: AsyncSession, shift_id: str) -> dict | None:
     """Summary for the shift, or None when the edge has no ticks for it."""
-    tick_seconds = float(get_settings().sim_tick_seconds)
-    idle = and_(Telemetry.engine_running, ~Telemetry.hydraulic_active, Telemetry.machine_speed == 0)
+    nominal = float(get_settings().sim_tick_seconds)
+    cap = get_thresholds().behavior.max_tick_gap_seconds
+
+    gap = func.extract("epoch", Telemetry.timestamp - func.lag(Telemetry.timestamp).over(order_by=Telemetry.timestamp))
+    ticks = (
+        select(
+            Telemetry.engine_running,
+            Telemetry.hydraulic_active,
+            Telemetry.machine_speed,
+            Telemetry.load_cycles,
+            Telemetry.fuel_used,
+            func.least(func.coalesce(gap, literal(nominal)), literal(cap)).label("dt"),
+        )
+        .where(Telemetry.shift_id == shift_id)
+        .subquery()
+    )
+    idle = and_(ticks.c.engine_running, ~ticks.c.hydraulic_active, ticks.c.machine_speed == 0)
     row = (
         await session.execute(
             select(
                 func.count().label("ticks"),
-                func.count().filter(Telemetry.engine_running).label("engine_ticks"),
-                func.count().filter(idle).label("idle_ticks"),
-                func.coalesce(func.sum(Telemetry.load_cycles), 0).label("cycles"),
-                (func.max(Telemetry.fuel_used) - func.min(Telemetry.fuel_used)).label("fuel"),
-            ).where(Telemetry.shift_id == shift_id)
+                func.coalesce(func.sum(ticks.c.dt).filter(ticks.c.engine_running), 0.0).label("engine_seconds"),
+                func.coalesce(func.sum(ticks.c.dt).filter(idle), 0.0).label("idle_seconds"),
+                func.coalesce(func.sum(ticks.c.load_cycles), 0).label("cycles"),
+                (func.max(ticks.c.fuel_used) - func.min(ticks.c.fuel_used)).label("fuel"),
+            )
         )
     ).one()
     if row.ticks == 0:
@@ -43,8 +64,8 @@ async def build_shift_summary(session: AsyncSession, shift_id: str) -> dict | No
         )
     ).scalar_one()
 
-    engine_seconds = row.engine_ticks * tick_seconds
-    idle_seconds = row.idle_ticks * tick_seconds
+    engine_seconds = float(row.engine_seconds)
+    idle_seconds = float(row.idle_seconds)
     engine_hours = engine_seconds / _SECONDS_PER_HOUR
     return {
         "shift_id": shift_id,

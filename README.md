@@ -126,6 +126,7 @@ Before each demo, reset it with `python -m scripts.reset_db` (a few seconds). Th
 - Start a task to see live progress. The simulator slows to real time while any incident is open.
 - End shift runs the end-of-shift idle ratio check on the live data so far and sends the shift summary to the cloud.
 - Scenarios only change raw sensor values. The safety and behavior engines decide what becomes an alert or a coaching note.
+- Sensor fault makes the proximity sensor report a fault. The check shows as unavailable and an open proximity incident stays open, since a missing reading never counts as clear.
 - Training modules open while the machine is parked, which means no task is running.
 - Values marked Illustrative (camera view, nearby equipment) are sample visuals, not machine data.
 - Summary shows the shift so far. The admin sees the same summary under Assignments once the machine has synced it.
@@ -153,7 +154,7 @@ The admin screens at `/admin` cover:
 
 - Assignments: shifts, their tasks, create shift, create task, cancel, reassign, and the ETA breakdown. Rejected requests show the reason next to the form. A task planned to finish after the shift ends is saved with a warning.
 - Operators and machines: qualifications, machine status, and service suggestions.
-- Sync conflicts: cloud changes that were undone because the machine had already started the task.
+- Sync: cloud changes that were undone because the machine had already started the task, and messages that kept failing for an hour and were set aside, with a Retry button.
 
 The same actions are available through the admin API under `/api/admin/`. With the backend in dev mode, the interactive API page at `http://localhost:8000/docs` lists every endpoint.
 

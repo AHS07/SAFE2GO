@@ -94,6 +94,8 @@ class EdgeTask(Base):
     planning_eta: Mapped[float | None] = mapped_column(Float, nullable=True)
     revised_predicted_time: Mapped[float | None] = mapped_column(Float, nullable=True)
     revised_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Why the ETA was last revised on the edge: "weather" or "pace".
+    revision_reason: Mapped[str | None] = mapped_column(String(20), nullable=True)
     model_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     aggregates_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

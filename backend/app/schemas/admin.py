@@ -145,3 +145,20 @@ class ConflictResponse(BaseModel):
     cloud_changed_at: datetime
     created_at: datetime
     resolved: bool
+
+
+class DeadLetterResponse(BaseModel):
+    message_id: str
+    direction: str              # cloud_to_edge or edge_to_cloud
+    message_type: str
+    entity_id: str | None
+    attempts: int
+    last_error: str | None
+    created_at: datetime
+    first_failed_at: datetime | None
+    dead_at: datetime
+
+
+class RetryResponse(BaseModel):
+    message_id: str
+    direction: str

@@ -35,6 +35,7 @@ class TaskResponse(BaseModel):
     # One ETA for the operator: planning_eta, or revised + buffer once revised.
     eta_minutes: float | None
     eta_from_history: bool                 # True when the model was unavailable
+    eta_revision_reason: str | None = None # "weather" or "pace" once the edge revised the ETA
     actual_start: datetime | None
     actual_end: datetime | None
 
@@ -83,6 +84,7 @@ class MachineStatusResponse(BaseModel):
     park_brake: bool | None = None
     gear_state: str | None = None
     proximity_distance: float | None = None
+    proximity_sensor_ok: bool | None = None
     ambient_temp: float | None = None
     visibility: float | None = None
     tilt_angle: float | None = None

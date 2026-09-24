@@ -108,6 +108,7 @@ class BehaviorThresholds(BaseModel):
     high_rpm_fraction: float
     travel_speed_threshold_kmh: TravelSpeedThresholds
     idle_ratio_mad_multiplier: float
+    max_tick_gap_seconds: float = Field(gt=0)
     baseline_min_shifts: int
 
 

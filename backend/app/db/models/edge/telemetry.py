@@ -45,6 +45,8 @@ class Telemetry(Base):
     gear_state: Mapped[str] = mapped_column(String(20), nullable=False)   # "neutral", "forward", "reverse", "park"
     # proximity_distance: null means no hazard detected in sensor range
     proximity_distance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # False: the proximity reading is unknown (sensor fault), never treated as clear.
+    proximity_sensor_ok: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     # Working conditions
     ambient_temp: Mapped[float] = mapped_column(Float, nullable=False)    # Celsius

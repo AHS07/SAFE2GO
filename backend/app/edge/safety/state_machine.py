@@ -40,6 +40,8 @@ class EvaluationResult:
     escalate_to_critical: bool = False
     # Human-readable reason if escalate_to_critical is True.
     escalation_reason: str | None = None
+    # Set when the rule could not judge this tick (sensor state unknown).
+    unknown: bool = False
 
 
 class RuleStateMachine:
@@ -128,6 +130,17 @@ class RuleStateMachine:
 
         result.state = self._state
         return result
+
+    def hold_unknown(self) -> EvaluationResult:
+        """The sensor state is unknown for this tick (rules.md: never guess safe).
+
+        Nothing opens or closes. An incident that was confirming its clear goes
+        back to active, because a missing reading cannot confirm the hazard is gone.
+        """
+        if self._state == RuleState.CLEARING:
+            self._state = RuleState.ACTIVE
+            self._clearing_since = None
+        return EvaluationResult(state=self._state, unknown=True)
 
     def reset(self) -> None:
         """Return to IDLE immediately (used on simulator reset)."""

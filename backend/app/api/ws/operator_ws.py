@@ -65,10 +65,13 @@ def create_ws_router(session_factory: async_sessionmaker) -> APIRouter:
             if not await _may_watch(session, payload, machine_id):
                 await websocket.close(code=_CLOSE_FORBIDDEN)
                 return
-            snapshot = await build_snapshot(session, machine_id)
 
+        # Register first (updates are held), then read the snapshot, so an update
+        # made while the snapshot is read is not lost.
         await ws_manager.connect(machine_id, websocket)
         try:
+            async with session_factory() as session:
+                snapshot = await build_snapshot(session, machine_id)
             await ws_manager.send_state_snapshot(machine_id, websocket, snapshot)
             while True:
                 try:

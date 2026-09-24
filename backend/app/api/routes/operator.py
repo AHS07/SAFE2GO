@@ -30,6 +30,7 @@ from app.db.models.edge.incident import Incident
 from app.db.session import get_db
 from app.edge.maintenance import machine_service
 from app.edge.outbox import queue_audit, queue_incident
+from app.edge.safety import engine as safety_registry
 from app.edge.safety.acknowledgement import acknowledge
 from app.edge.shift import current_shift_for_operator
 from app.edge.shift_report import edge_shift_report
@@ -213,6 +214,10 @@ async def acknowledge_incident(
     queue_incident(session, incident)
     queue_audit(session, user.get("sub"), AuditAction.INCIDENT_ACKNOWLEDGE, "incident", incident.incident_id)
     await session.commit()
+    if incident.status == IncidentStatus.RESOLVED.value:
+        engine = safety_registry.get_engine(incident.machine_id)
+        if engine is not None:
+            await engine.incident_resolved(incident.incident_id)
 
     view = incident_view(incident)
     await _broadcast_incident(incident.machine_id, view, "acknowledged")

@@ -38,8 +38,13 @@ const CHECKS: Check[] = [
     name: "Proximity",
     icon: "radar",
     incidentType: "proximity",
-    // The sensor reports nothing when no object is in range.
-    value: (s) => (s.proximity_distance === null ? "Nothing in range" : number(s.proximity_distance, 1, "m")),
+    // No distance from a working sensor means nothing is in range; a sensor fault is unknown.
+    value: (s) =>
+      s.proximity_sensor_ok === false
+        ? "Sensor fault"
+        : s.proximity_distance === null
+          ? "Nothing in range"
+          : number(s.proximity_distance, 1, "m"),
   },
   {
     name: "Tilt",

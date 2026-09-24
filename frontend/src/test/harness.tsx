@@ -113,6 +113,7 @@ export function task(overrides: Partial<Task> = {}): Task {
     scheduled_end: "2026-09-23T09:00:00Z",
     eta_minutes: 95,
     eta_from_history: false,
+    eta_revision_reason: null,
     actual_start: null,
     actual_end: null,
     ...overrides,
@@ -139,6 +140,7 @@ export const NO_DATA: MachineStatus = {
   machine_id: "m-1", live: false, parked: false, timestamp: null, engine_running: null, engine_rpm: null,
   engine_hours: null, fuel_used: null, hydraulic_active: null, machine_speed: null, payload_pct: null,
   seatbelt_status: null, seat_occupied: null, park_brake: null, gear_state: null, proximity_distance: null,
+  proximity_sensor_ok: null,
   ambient_temp: null, visibility: null, tilt_angle: null, task_id: null,
 };
 

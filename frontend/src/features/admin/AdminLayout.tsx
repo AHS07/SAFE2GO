@@ -8,10 +8,13 @@ import Badge from "@/shared/ui/Badge";
 import Button from "@/shared/ui/Button";
 import Icon, { type IconName } from "@/shared/ui/Icon";
 
+import { usePolledResource, useToken } from "./useAdminData";
+import { adminApi } from "@/api/admin";
+
 const NAV: { to: string; label: string; icon: IconName; end: boolean }[] = [
   { to: "/admin", label: "Assignments", icon: "assignment", end: true },
   { to: "/admin/fleet", label: "Operators and machines", icon: "groups", end: false },
-  { to: "/admin/conflicts", label: "Sync conflicts", icon: "sync_problem", end: false },
+  { to: "/admin/conflicts", label: "Sync", icon: "sync_problem", end: false },
 ];
 
 function SyncState(): React.ReactElement | null {
@@ -40,6 +43,13 @@ function SyncState(): React.ReactElement | null {
 export default function AdminLayout(): React.ReactElement {
   const { signOut } = useSession();
   const { error } = useDemo();
+  const token = useToken();
+  const conflicts = usePolledResource(() => adminApi.conflicts(token), [token]);
+  const deadLetters = usePolledResource(() => adminApi.deadLetters(token), [token]);
+  // Everything on the Sync page that needs the admin: open conflicts and dead letters.
+  const unresolvedCount =
+    (conflicts.data?.filter((c) => !c.resolved).length ?? 0) + (deadLetters.data?.length ?? 0);
+
   return (
     <div className="app-grid-bg min-h-screen">
       <header className="border-b border-line bg-panel">
@@ -72,6 +82,11 @@ export default function AdminLayout(): React.ReactElement {
             >
               <Icon name={item.icon} className="text-base" />
               {item.label}
+              {item.to === "/admin/conflicts" && unresolvedCount > 0 && (
+                <span className="ml-1 rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-xs font-bold text-amber-400 border border-amber-500/40">
+                  {unresolvedCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

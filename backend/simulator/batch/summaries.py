@@ -67,7 +67,10 @@ def derive_actuals(
         if tick["engine_running"]:
             total_engine_seconds += 1.0
 
-        if phase == _Phase.IDLE:
+        # Idle ratio measures machine state, including a blocked wait with
+        # the engine idling. The excessive-idling detector separately excludes
+        # blocked task time.
+        if phase in (_Phase.IDLE, _Phase.BLOCKED):
             total_idle_seconds += 1.0
 
         if task_id and task_id in task_map:

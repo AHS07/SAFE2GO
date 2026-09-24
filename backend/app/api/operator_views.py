@@ -38,6 +38,7 @@ def task_view(task: EdgeTask) -> TaskResponse:
         scheduled_end=task.scheduled_end,
         eta_minutes=displayed_eta(task.planning_eta, task.revised_predicted_time),
         eta_from_history=task.is_fallback,
+        eta_revision_reason=task.revision_reason,
         actual_start=task.actual_start,
         actual_end=task.actual_end,
     )
@@ -79,6 +80,7 @@ def machine_status_view(machine_id: str) -> MachineStatusResponse:
         park_brake=tick.park_brake,
         gear_state=tick.gear_state,
         proximity_distance=tick.proximity_distance,
+        proximity_sensor_ok=tick.proximity_sensor_ok,
         ambient_temp=tick.ambient_temp,
         visibility=tick.visibility,
         tilt_angle=tick.tilt_angle,

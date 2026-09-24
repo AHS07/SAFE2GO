@@ -12,11 +12,13 @@ from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cloud.assignment import service as assignment
+from app.cloud.audit.service import record_audit
 from app.cloud.conflicts.service import list_conflicts, resolve_conflict
 from app.cloud.eta.service import eta_breakdown
 from app.cloud.shift_report import cloud_shift_report
 from app.config.thresholds import get_thresholds
 from app.core.deps import require_admin
+from app.core.errors import NotFoundError
 from app.db.models.cloud.shift import Shift
 from app.db.models.cloud.task import Task
 from app.db.session import get_db
@@ -24,10 +26,12 @@ from app.schemas.admin import (
     AssignmentResponse,
     AssignmentWarningResponse,
     ConflictResponse,
+    DeadLetterResponse,
     EtaBreakdownResponse,
     MachineAdminResponse,
     OperatorAdminResponse,
     QualificationResponse,
+    RetryResponse,
     ShiftAdminResponse,
     ShiftCreateRequest,
     TaskAdminResponse,
@@ -36,7 +40,9 @@ from app.schemas.admin import (
 )
 from app.schemas.maintenance import ServiceSuggestionResponse
 from app.schemas.shift_report import ShiftReportResponse
+from app.shared.enums import AuditAction
 from app.shared.maintenance import service_suggestion
+from app.sync.worker import list_dead_letters, retry_dead_letter
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -269,3 +275,29 @@ async def post_resolve_conflict(
     conflict = await resolve_conflict(session, conflict_id, user["sub"])
     await session.commit()
     return _conflict_view(conflict)
+
+
+# ---------------------------------------------------------------------------
+# Sync dead letters
+# ---------------------------------------------------------------------------
+
+
+@router.get("/sync/dead-letters", response_model=list[DeadLetterResponse], dependencies=[Depends(require_admin)])
+async def get_dead_letters(session: AsyncSession = Depends(get_db)) -> list[DeadLetterResponse]:
+    """Messages that kept failing and were set aside so later messages could continue."""
+    return [DeadLetterResponse(**asdict(v)) for v in await list_dead_letters(session)]
+
+
+@router.post("/sync/dead-letters/{message_id}/retry", response_model=RetryResponse)
+async def post_retry_dead_letter(
+    message_id: str = Path(...),
+    user: dict = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+) -> RetryResponse:
+    """Put the message back at the head of its direction with a fresh retry window."""
+    direction = await retry_dead_letter(session, message_id)
+    if direction is None:
+        raise NotFoundError(f"Dead letter {message_id} not found.", details={"message_id": message_id})
+    record_audit(session, user["sub"], AuditAction.SYNC_RETRY, "sync_message", message_id)
+    await session.commit()
+    return RetryResponse(message_id=message_id, direction=direction)

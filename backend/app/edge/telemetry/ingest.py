@@ -78,6 +78,7 @@ async def ingest_tick(
         park_brake=tick.park_brake,
         gear_state=tick.gear_state,
         proximity_distance=tick.proximity_distance,
+        proximity_sensor_ok=tick.proximity_sensor_ok,
         ambient_temp=tick.ambient_temp,
         visibility=tick.visibility,
         tilt_angle=tick.tilt_angle,

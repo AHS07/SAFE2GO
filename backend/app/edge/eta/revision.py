@@ -139,6 +139,7 @@ async def revise_if_triggered(
     estimate = predictor.predict(remaining, history, task.quantity_unit)
     task.revised_predicted_time = round(elapsed + estimate.raw_minutes, 1)
     task.revised_at = now
+    task.revision_reason = trigger
     await session.flush()
     log.info(
         "ETA revised",

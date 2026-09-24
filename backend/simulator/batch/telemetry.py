@@ -259,6 +259,7 @@ def generate_telemetry(
             "park_brake": park_brake,
             "gear_state": gear_state,
             "proximity_distance": round(proximity_distance, 2) if proximity_distance is not None else None,
+            "proximity_sensor_ok": True,
             "ambient_temp": round(ambient_temp, 2),
             "visibility": round(visibility, 1),
             "tilt_angle": round(tilt_angle, 3),

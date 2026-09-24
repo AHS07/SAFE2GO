@@ -53,6 +53,7 @@ def _tick(**overrides) -> TelemetryTick:
         "ambient_temp": 25.0,
         "visibility": 400.0,
         "tilt_angle": 1.0,
+        "proximity_sensor_ok": True,
     }
     raw.update(overrides)
     return TelemetryTick.model_validate(raw)

@@ -6,8 +6,16 @@ Responsibilities:
 - Runs all 7 rules against the tick.
 - Isolates failures: a crashing rule marks itself degraded, others keep running.
 - Opens, escalates, and closes incidents in the edge DB.
-- Notifies the clock driver of incident open/close for auto-slow.
+- Keeps auto-slow on while any incident it opened is unresolved: a cleared
+  CRITICAL still waits for acknowledgement (architecture 4.9).
 - Broadcasts incident updates via the WebSocket manager.
+- Marks a rule unknown for a tick when its sensor reports a fault, and says so.
+
+Transactions: the pipeline takes a checkpoint() before a tick and calls
+restore() if the database transaction rolls back, so the engine never
+believes in an incident that was not committed. Everything visible outside
+the engine (WebSocket messages, auto-slow) is queued and only sent by
+flush_effects() after the commit.
 - Applies repeat escalation: if the tracker says a new WARNING should be
   CRITICAL, the incident opens at CRITICAL instead.
 
@@ -25,6 +33,7 @@ come from the simulation clock via the tick's timestamp field.
 """
 from __future__ import annotations
 
+import copy
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
@@ -67,6 +76,7 @@ class RuleSlot:
     machine: RuleStateMachine
     module: Any                         # the rule module (has evaluate())
     degraded: bool = False
+    unknown: bool = False               # sensor state unknown on the latest tick
     open_incident_id: str | None = None
     extra_kwargs: dict = field(default_factory=dict)
 
@@ -93,7 +103,10 @@ class SafetyEngine:
         self._machine_id = machine_id
         self._tilt_limit = tilt_limit_degrees
         self._escalation = RepeatEscalationTracker()
-        self._open_incident_count = 0
+        # Incidents this engine opened that are not resolved yet (auto-slow).
+        self._unresolved: set[str] = set()
+        # Effects visible outside the engine, sent only after the tick commits.
+        self._effects: list[Callable[[], Awaitable[None]]] = []
 
         self._rules: list[RuleSlot] = [
             RuleSlot(
@@ -161,6 +174,64 @@ class SafetyEngine:
         self._incident_listeners.append(listener)
 
     # ------------------------------------------------------------------
+    # Transaction support
+    # ------------------------------------------------------------------
+
+    def checkpoint(self) -> dict:
+        """Copy of all state a tick can change, taken before the tick."""
+        return copy.deepcopy({
+            "slots": [(s.machine, s.degraded, s.unknown, s.open_incident_id) for s in self._rules],
+            "escalation": self._escalation,
+            "unresolved": self._unresolved,
+        })
+
+    def restore(self, saved: dict) -> None:
+        """Undo a tick whose database transaction rolled back."""
+        for slot, (machine, degraded, unknown, incident_id) in zip(self._rules, saved["slots"], strict=True):
+            slot.machine, slot.degraded, slot.unknown, slot.open_incident_id = machine, degraded, unknown, incident_id
+        self._escalation = saved["escalation"]
+        self._unresolved = saved["unresolved"]
+        self._effects.clear()
+
+    async def flush_effects(self) -> None:
+        """Send the effects of a committed tick, in order."""
+        effects, self._effects = self._effects, []
+        for effect in effects:
+            await effect()
+
+    def _after_commit(self, effect: Callable[[], Awaitable[None]]) -> None:
+        self._effects.append(effect)
+
+    def _mark_unresolved(self, incident_id: str) -> None:
+        self._unresolved.add(incident_id)
+        driver = self._clock_driver
+        if driver is not None:
+            self._after_commit(_sync_effect(driver.notify_incident_opened))
+
+    def _mark_resolved(self, incident_id: str) -> None:
+        if incident_id not in self._unresolved:
+            return
+        self._unresolved.discard(incident_id)
+        driver = self._clock_driver
+        if driver is not None:
+            self._after_commit(_sync_effect(driver.notify_incident_closed))
+
+    async def incident_resolved(self, incident_id: str) -> None:
+        """Called after an acknowledgement resolved an incident this engine opened."""
+        self._mark_resolved(incident_id)
+        await self.flush_effects()
+
+    def release_unresolved(self) -> set[str]:
+        """Transfer unresolved incident tracking when a machine changes shifts."""
+        unresolved = self._unresolved
+        self._unresolved = set()
+        return unresolved
+
+    def adopt_unresolved(self, incident_ids: set[str]) -> None:
+        """Adopt unresolved incidents without changing the driver's open count."""
+        self._unresolved.update(incident_ids)
+
+    # ------------------------------------------------------------------
     # Main entry point
     # ------------------------------------------------------------------
 
@@ -188,7 +259,7 @@ class SafetyEngine:
                     },
                     exc_info=exc,
                 )
-                await self._broadcast_degraded(slot.name)
+                self._after_commit(lambda name=slot.name: self._broadcast_degraded(name, "rule_error"))
 
     # ------------------------------------------------------------------
     # Per-rule evaluation
@@ -202,6 +273,7 @@ class SafetyEngine:
         session: AsyncSession,
     ) -> None:
         result = slot.module.evaluate(slot.machine, tick, sim_ts, **slot.extra_kwargs)
+        self._track_unknown(slot, result.unknown)
 
         if result.opened:
             severity = slot.machine.current_severity
@@ -218,26 +290,36 @@ class SafetyEngine:
                 slot, tick, severity, result.escalation_reason, session
             )
             slot.open_incident_id = incident_id
-            self._open_incident_count += 1
-            if self._clock_driver:
-                self._clock_driver.notify_incident_opened()
-            await self._broadcast_incident(slot, incident_id, "opened", severity)
+            self._mark_unresolved(incident_id)
+            self._after_commit(lambda: self._broadcast_incident(slot, incident_id, "opened", severity))
             await self._notify_incident_listeners(slot.incident_type, incident_id, tick, session)
 
         elif result.escalate_to_critical and slot.open_incident_id:
-            await self._escalate_incident(
-                slot.open_incident_id, result.escalation_reason, session
-            )
-            await self._broadcast_incident(slot, slot.open_incident_id, "escalated", "critical")
+            escalated_id = slot.open_incident_id
+            await self._escalate_incident(escalated_id, result.escalation_reason, session)
+            self._after_commit(lambda: self._broadcast_incident(slot, escalated_id, "escalated", "critical"))
 
         elif result.closed and slot.open_incident_id:
             closed_id = slot.open_incident_id
-            await self._close_incident(closed_id, tick.timestamp, session)
+            status = await self._close_incident(closed_id, tick.timestamp, session)
             slot.open_incident_id = None
-            self._open_incident_count = max(0, self._open_incident_count - 1)
-            if self._clock_driver:
-                self._clock_driver.notify_incident_closed()
-            await self._broadcast_incident(slot, closed_id, "closed", slot.machine.current_severity)
+            # A cleared CRITICAL stays unresolved (and auto-slow stays on) until acknowledged.
+            if status == IncidentStatus.RESOLVED.value:
+                self._mark_resolved(closed_id)
+            severity = slot.machine.current_severity
+            self._after_commit(lambda: self._broadcast_incident(slot, closed_id, "closed", severity))
+
+    def _track_unknown(self, slot: RuleSlot, unknown: bool) -> None:
+        """Tell the operator when a check cannot run because its sensor reports a fault."""
+        if unknown == slot.unknown:
+            return
+        slot.unknown = unknown
+        if unknown:
+            log.warning("Safety check unknown, sensor fault", extra={"rule": slot.name, "machine_id": self._machine_id})
+            self._after_commit(lambda: self._broadcast_degraded(slot.name, "sensor_fault"))
+        else:
+            log.info("Safety check restored", extra={"rule": slot.name, "machine_id": self._machine_id})
+            self._after_commit(lambda: self._broadcast_restored(slot.name))
 
     # ------------------------------------------------------------------
     # DB operations
@@ -302,10 +384,11 @@ class SafetyEngine:
         incident_id: str,
         event_end: datetime,
         session: AsyncSession,
-    ) -> None:
+    ) -> str | None:
+        """Close the hazard window. Returns the incident's new status."""
         incident = await session.get(Incident, incident_id)
         if incident is None:
-            return
+            return None
 
         # WARNING incidents auto-resolve. CRITICAL incidents resolve only
         # once acknowledged; otherwise they stay open with event_end set.
@@ -321,6 +404,7 @@ class SafetyEngine:
                 "machine_id": self._machine_id,
             },
         )
+        return incident.status
 
     async def _notify_incident_listeners(
         self,
@@ -369,19 +453,19 @@ class SafetyEngine:
             # A broadcast failure never stops safety processing.
             log.warning("Incident broadcast failed", extra={"machine_id": self._machine_id, "error": str(exc)})
 
-    async def _broadcast_degraded(self, rule_name: str) -> None:
+    async def _broadcast_degraded(self, rule_name: str, reason: str) -> None:
+        await self._broadcast_status("safety_degraded", {"rule": rule_name, "reason": reason})
+
+    async def _broadcast_restored(self, rule_name: str) -> None:
+        await self._broadcast_status("safety_restored", {"rule": rule_name})
+
+    async def _broadcast_status(self, message_type: str, data: dict) -> None:
         if self._ws_broadcast is None:
             return
         try:
-            await self._ws_broadcast(
-                self._machine_id,
-                {
-                    "type": "safety_degraded",
-                    "data": {"rule": rule_name, "machine_id": self._machine_id},
-                },
-            )
+            await self._ws_broadcast(self._machine_id, {"type": message_type, "data": {**data, "machine_id": self._machine_id}})
         except Exception as exc:
-            log.warning("Degraded-rule broadcast failed", extra={"machine_id": self._machine_id, "error": str(exc)})
+            log.warning("Rule status broadcast failed", extra={"machine_id": self._machine_id, "error": str(exc)})
 
     # ------------------------------------------------------------------
     # Reset
@@ -393,8 +477,10 @@ class SafetyEngine:
             slot.machine.reset()
             slot.open_incident_id = None
             slot.degraded = False
+            slot.unknown = False
         self._escalation.reset_machine(self._machine_id)
-        self._open_incident_count = 0
+        self._unresolved.clear()
+        self._effects.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -419,6 +505,12 @@ def deregister_engine(machine_id: str) -> None:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _sync_effect(fn: Callable[[], None]) -> Callable[[], Awaitable[None]]:
+    async def run() -> None:
+        fn()
+    return run
+
 
 def _map_escalation_reason(reason: str | None) -> str | None:
     if reason is None:

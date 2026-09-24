@@ -5,7 +5,7 @@ export type TaskStatus = "assigned" | "in_progress" | "paused" | "blocked" | "do
 export type TaskAction = "start" | "pause" | "resume" | "block" | "unblock" | "complete";
 export type Severity = "warning" | "critical";
 export type IncidentStatus = "open" | "acknowledged" | "resolved";
-export type ScenarioName = "proximity" | "overload" | "seatbelt" | "idling" | "tilt" | "end_shift";
+export type ScenarioName = "proximity" | "sensor_fault" | "overload" | "seatbelt" | "idling" | "tilt" | "end_shift";
 
 export interface LoginResponse {
   access_token: string;
@@ -44,6 +44,8 @@ export interface Task {
   scheduled_end: string | null;
   eta_minutes: number | null;
   eta_from_history: boolean;
+  /** Why the machine revised the ETA: "weather" or "pace"; null when not revised. */
+  eta_revision_reason: string | null;
   actual_start: string | null;
   actual_end: string | null;
 }
@@ -79,6 +81,7 @@ export interface MachineStatus {
   park_brake: boolean | null;
   gear_state: string | null;
   proximity_distance: number | null;
+  proximity_sensor_ok: boolean | null;
   ambient_temp: number | null;
   visibility: number | null;
   tilt_angle: number | null;
@@ -122,6 +125,7 @@ export interface TelemetryTick {
   park_brake: boolean;
   gear_state: string;
   proximity_distance: number | null;
+  proximity_sensor_ok: boolean;
   ambient_temp: number;
   visibility: number;
   tilt_angle: number;
@@ -133,6 +137,8 @@ export interface ProgressUpdate {
   completed_quantity: number;
   target_quantity: number;
   target_reached: boolean;
+  eta_minutes: number | null;
+  eta_revision_reason: string | null;
 }
 
 export interface RecommendationNotice {
@@ -147,7 +153,8 @@ export type ServerMessage =
   | { type: "progress"; data: ProgressUpdate }
   | { type: "coaching"; data: { event_id: string; recommendation: RecommendationNotice | null } }
   | { type: "recommendation"; data: RecommendationNotice }
-  | { type: "safety_degraded"; data: { rule: string } }
+  | { type: "safety_degraded"; data: { rule: string; reason: "rule_error" | "sensor_fault" } }
+  | { type: "safety_restored"; data: { rule: string } }
   | { type: "ping" };
 
 export interface SimStatus {
@@ -411,4 +418,16 @@ export interface ExplainResponse extends ManualSearchResponse {
   explanation: string | null;
   notice: string | null;
   model: string | null;
+}
+
+export interface DeadLetter {
+  message_id: string;
+  direction: "cloud_to_edge" | "edge_to_cloud";
+  message_type: string;
+  entity_id: string | null;
+  attempts: number;
+  last_error: string | null;
+  created_at: string;
+  first_failed_at: string | null;
+  dead_at: string;
 }
