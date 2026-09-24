@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     )
 
     app_env: Literal["dev", "demo", "test"] = "dev"
-    database_url: str = "postgresql+asyncpg://safe2go:safe2go@localhost:5433/safe2go"
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/safe2go"
 
     # Required, no default: an empty or weak key would make every token forgeable.
     jwt_secret: str = ""

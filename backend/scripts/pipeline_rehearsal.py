@@ -1,7 +1,7 @@
 """Rehearse the Kafka pipeline under a reconnect with live load.
 
 Needs the backend running with KAFKA_ENABLED=true and Kafka up
-(docker compose up -d kafka). Each run reseeds the demo, then:
+(the local broker in kafka/, see README). Each run reseeds the demo, then:
 
   1. Pipeline healthy: forwarder up to date, consumer running.
   2. Live ticks from every demo machine reach the analytics archive.

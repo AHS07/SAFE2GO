@@ -266,7 +266,7 @@ export default function PipelinePage(): React.ReactElement {
       <div className="space-y-4">
         {header}
         <Notice tone="info" role="status">
-          <p>Streaming is off. Set KAFKA_ENABLED=true in .env, start Kafka with docker compose up -d kafka, and restart the backend.</p>
+          <p>Streaming is off. Start the local Kafka broker (see README), set KAFKA_ENABLED=true in .env, and restart the backend.</p>
         </Notice>
       </div>
     );

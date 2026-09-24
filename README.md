@@ -40,17 +40,18 @@ Kafka is optional and only carries a copy of live telemetry to fleet analytics. 
 | Database | PostgreSQL 16, SQLAlchemy 2.x, Alembic |
 | Machine learning | scikit-learn, pandas, NumPy, joblib |
 | Real-time | FastAPI WebSockets |
-| Telemetry streaming (optional) | Apache Kafka 3.9 in Docker, aiokafka |
+| Telemetry streaming (optional) | Apache Kafka 4.1.1 (local install), aiokafka |
 | Documentation assistant | TF-IDF retrieval, DeepSeek API |
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS |
 | Testing | pytest, Vitest |
-| Local services | Docker Compose |
+| Local services | PostgreSQL and Kafka installed locally (Docker Compose optional for PostgreSQL) |
 
 ## Requirements
 
 - Python 3.11 or later
 - Node.js 20 or later
-- Docker and Docker Compose
+- PostgreSQL 16 or later (a local install; Docker is optional)
+- Java 17 or later (only for the optional Kafka pipeline)
 - DeepSeek API key (optional, only for assistant explanations)
 
 ## Setup
@@ -71,13 +72,13 @@ Kafka is optional and only carries a copy of live telemetry to fleet analytics. 
 
    `DEEPSEEK_API_KEY` can be left empty.
 
-2. Start the database.
+2. Create the database on your local PostgreSQL.
 
    ```bash
-   docker compose up -d db
+   psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE safe2go"
    ```
 
-   Without Docker, any PostgreSQL 16 server works: create an empty database and set `DATABASE_URL` in `.env` to it.
+   Set `DATABASE_URL` in `.env` to it, for example `postgresql+asyncpg://postgres:YOUR_PASSWORD@localhost:5432/safe2go`. Write special characters in the password URL-encoded (`@` becomes `%40`). If you prefer Docker, `docker compose up -d db` starts PostgreSQL 16 on port 5433 instead.
 
 3. Set up the backend.
 
@@ -158,7 +159,16 @@ Each machine keeps a copy of its live sensor data in a local queue (the spool). 
 
 To turn it on:
 
-1. Start Kafka: `docker compose up -d kafka`
+1. Start Kafka from the local install in `kafka/` (not in git; Kafka 4.1, Java 17 or later). Run these in PowerShell from the repo root. The format step is needed only the first time; it creates the data folder `kafka/kafka-logs`.
+
+   ```powershell
+   $env:KAFKA_HEAP_OPTS = "-Xms512M -Xmx512M"
+   $clusterId = (& .\kafka\bin\windows\kafka-storage.bat random-uuid | Select-Object -Last 1).Trim()
+   .\kafka\bin\windows\kafka-storage.bat format --cluster-id "$clusterId" --config .\kafka\config\server.properties
+   .\kafka\bin\windows\kafka-server-start.bat .\kafka\config\server.properties
+   ```
+
+   Kafka listens on `localhost:9092`. Leave that window open while the demo runs.
 2. Set `KAFKA_ENABLED=true` in `.env`
 3. Restart the backend
 

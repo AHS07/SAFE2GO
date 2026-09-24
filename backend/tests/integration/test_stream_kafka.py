@@ -1,7 +1,7 @@
 """Streaming against a real Kafka broker and the real aiokafka clients.
 
 The end-to-end tests run only when a broker answers on localhost:9092
-(docker compose up -d kafka); each uses its own topics and consumer group.
+(the local broker in kafka/, see README); each uses its own topics and consumer group.
 The unreachable-broker test always runs: it points the real client at a
 closed port.
 """

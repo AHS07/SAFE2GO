@@ -68,3 +68,6 @@ desktop.ini
 
 # Docker volume data (if ever mounted locally)
 postgres_data/
+
+# Local Kafka install and its data (run from kafka/, see README)
+kafka/
