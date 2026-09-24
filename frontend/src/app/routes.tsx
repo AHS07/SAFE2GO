@@ -8,6 +8,7 @@ import AdminLayout from "@/features/admin/AdminLayout";
 import AssignmentsPage from "@/features/admin/AssignmentsPage";
 import ConflictsPage from "@/features/admin/ConflictsPage";
 import FleetPage from "@/features/admin/FleetPage";
+import PipelinePage from "@/features/admin/PipelinePage";
 import ManualSearchPage from "@/features/assistant/ManualSearchPage";
 import LoginPage from "@/features/auth/LoginPage";
 import RequireSession from "@/features/auth/RequireSession";
@@ -38,6 +39,7 @@ const ADMIN_PAGES: { path: string; feature: string; element: React.ReactElement 
   { path: "", feature: "Assignments", element: <AssignmentsPage /> },
   { path: "fleet", feature: "Operators and machines", element: <FleetPage /> },
   { path: "conflicts", feature: "Sync conflicts", element: <ConflictsPage /> },
+  { path: "pipeline", feature: "Data pipeline", element: <PipelinePage /> },
 ];
 
 export default function AppRoutes(): React.ReactElement {

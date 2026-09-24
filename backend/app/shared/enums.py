@@ -162,3 +162,12 @@ class AuditAction(StrEnum):
     INCIDENT_REPORT = "incident_report"
     CONFLICT_RESOLVE = "conflict_resolve"
     SYNC_RETRY = "sync_retry"
+    ACCOUNT_CREATE = "account_create"
+
+
+class StreamKind(StrEnum):
+    """Records forwarded from the edge spool to Kafka."""
+    TELEMETRY = "telemetry"
+    GAP = "gap"
+    INCIDENT = "incident"
+    BEHAVIOR_EVENT = "behavior_event"

@@ -1,4 +1,4 @@
-"""Admin routes: master data lists, shift and task assignment, ETA breakdown.
+"""Admin routes: master data lists, operator accounts, shift and task assignment, ETA breakdown.
 
 Every route requires the admin role. Writes are validated in the cloud
 assignment service and audited in the same transaction.
@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.cloud.assignment import service as assignment
 from app.cloud.audit.service import record_audit
 from app.cloud.conflicts.service import list_conflicts, resolve_conflict
+from app.cloud.credentials.accounts import create_operator_account, operator_accounts
 from app.cloud.eta.service import eta_breakdown
 from app.cloud.shift_report import cloud_shift_report
 from app.config.thresholds import get_thresholds
@@ -29,11 +30,14 @@ from app.schemas.admin import (
     DeadLetterResponse,
     EtaBreakdownResponse,
     MachineAdminResponse,
+    OperatorAccountCreateRequest,
+    OperatorAccountResponse,
     OperatorAdminResponse,
     QualificationResponse,
     RetryResponse,
     ShiftAdminResponse,
     ShiftCreateRequest,
+    ShiftCreateResponse,
     TaskAdminResponse,
     TaskCreateRequest,
     TaskReassignRequest,
@@ -78,6 +82,7 @@ async def _assignment_view(session: AsyncSession, result: assignment.AssignmentR
 
 @router.get("/operators", response_model=list[OperatorAdminResponse], dependencies=[Depends(require_admin)])
 async def get_operators(session: AsyncSession = Depends(get_db)) -> list[OperatorAdminResponse]:
+    accounts = await operator_accounts(session)
     return [
         OperatorAdminResponse(
             operator_id=op.operator_id,
@@ -85,9 +90,35 @@ async def get_operators(session: AsyncSession = Depends(get_db)) -> list[Operato
             qualifications=[
                 QualificationResponse(machine_type=q.machine_type, skill_level=q.skill_level) for q in quals
             ],
+            username=accounts[op.operator_id].username if op.operator_id in accounts else None,
         )
         for op, quals in await assignment.list_operators(session)
     ]
+
+
+@router.post("/operators/{operator_id}/account", response_model=OperatorAccountResponse, status_code=201)
+async def post_operator_account(
+    body: OperatorAccountCreateRequest,
+    operator_id: str = Path(...),
+    user: dict = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+) -> OperatorAccountResponse:
+    """Give an operator a password and PIN so they can sign in and see their assigned work."""
+    result = await create_operator_account(
+        session,
+        operator_id,
+        username=body.username,
+        password=body.password,
+        pin=body.pin,
+        actor_id=user["sub"],
+    )
+    await session.commit()
+    return OperatorAccountResponse(
+        operator_id=operator_id,
+        user_id=result.user.user_id,
+        username=result.user.username,
+        credentials_issued=result.credentials_issued,
+    )
 
 
 @router.get("/machines", response_model=list[MachineAdminResponse], dependencies=[Depends(require_admin)])
@@ -130,13 +161,13 @@ async def get_shifts(
     return [_shift_view(s, queued) for s in shifts]
 
 
-@router.post("/shifts", response_model=ShiftAdminResponse, status_code=201)
+@router.post("/shifts", response_model=ShiftCreateResponse, status_code=201)
 async def post_shift(
     body: ShiftCreateRequest,
     user: dict = Depends(require_admin),
     session: AsyncSession = Depends(get_db),
-) -> ShiftAdminResponse:
-    shift = await assignment.create_shift(
+) -> ShiftCreateResponse:
+    result = await assignment.create_shift(
         session,
         operator_id=body.operator_id,
         machine_id=body.machine_id,
@@ -146,7 +177,11 @@ async def post_shift(
         actor_id=user["sub"],
     )
     await session.commit()
-    return _shift_view(shift, await assignment.queued_entities(session, [shift.shift_id]))
+    view = _shift_view(result.shift, await assignment.queued_entities(session, [result.shift.shift_id]))
+    return ShiftCreateResponse(
+        **view.model_dump(),
+        warnings=[AssignmentWarningResponse(**asdict(w)) for w in result.warnings],
+    )
 
 
 @router.get(

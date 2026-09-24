@@ -1,4 +1,4 @@
-/** Admin forms: create shift and create task. The backend validates; errors and warnings show inline. */
+/** Admin forms: create shift, create task, and operator sign-in. The backend validates; errors and warnings show inline. */
 import React, { useState } from "react";
 import { adminApi } from "@/api/admin";
 import { ApiError } from "@/api/client";
@@ -6,8 +6,10 @@ import { useDemo } from "@/features/demo-controls/DemoContext";
 import Button from "@/shared/ui/Button";
 import Notice from "@/shared/ui/Notice";
 import type {
+  AdminOperator,
   AdminShift,
   AssignmentWarning,
+  OperatorAccount,
   MaterialType,
   QuantityUnit,
   TaskType,
@@ -93,12 +95,14 @@ export function ShiftForm({ reference, onCreated }: { reference: Reference; onCr
   const [end, setEnd] = useState(toLocalInput(new Date(nextHour.getTime() + DEFAULT_SHIFT_HOURS * HOUR_MS)));
   const [weather, setWeather] = useState<WeatherCategory>("clear");
   const [error, setError] = useState<unknown>(null);
+  const [warnings, setWarnings] = useState<AssignmentWarning[]>([]);
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setBusy(true);
     setError(null);
+    setWarnings([]);
     try {
       const shift = await adminApi.createShift(token, {
         operator_id: operatorId,
@@ -107,6 +111,7 @@ export function ShiftForm({ reference, onCreated }: { reference: Reference; onCr
         scheduled_end: fromLocalInput(end),
         weather_forecast: weather,
       });
+      setWarnings(shift.warnings);
       onCreated(shift);
     } catch (err) {
       setError(err);
@@ -123,6 +128,7 @@ export function ShiftForm({ reference, onCreated }: { reference: Reference; onCr
           {reference.operators.map((o) => (
             <option key={o.operator_id} value={o.operator_id}>
               {o.operator_name} ({o.qualifications.map((q) => `${label(q.machine_type)} ${q.skill_level}`).join(", ")})
+              {o.username === null ? ", no login" : ""}
             </option>
           ))}
         </select>
@@ -156,6 +162,7 @@ export function ShiftForm({ reference, onCreated }: { reference: Reference; onCr
         </select>
       </Field>
       <FormError error={error} />
+      <Warnings warnings={warnings} />
       <Button type="submit" variant="primary" className="w-full" disabled={busy}>
         {busy ? "Creating" : "Create shift"}
       </Button>
@@ -239,6 +246,79 @@ export function TaskForm({
       <FormError error={error} />
       <Button type="submit" variant="primary" disabled={busy}>
         {busy ? "Assigning" : "Assign task"}
+      </Button>
+    </form>
+  );
+}
+
+/** Suggested username from the operator's name: "Ravi Khan" becomes "ravi_khan". */
+export function suggestUsername(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+export function AccountForm({
+  operator,
+  onCreated,
+}: {
+  operator: AdminOperator;
+  onCreated: (account: OperatorAccount) => void;
+}): React.ReactElement {
+  const token = useToken();
+  const [username, setUsername] = useState(suggestUsername(operator.operator_name));
+  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      onCreated(await adminApi.createOperatorAccount(token, operator.operator_id, { username, password, pin }));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="space-y-3" onSubmit={submit} aria-label={`Login for ${operator.operator_name}`}>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Field label="Username">
+          <input className={INPUT} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" required />
+        </Field>
+        <Field label="Password">
+          <input
+            className={INPUT}
+            type="password"
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+          />
+        </Field>
+        <Field label="PIN (offline)">
+          <input
+            className={INPUT}
+            inputMode="numeric"
+            pattern="[0-9]{4,12}"
+            title="4 to 12 digits"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            autoComplete="off"
+            required
+          />
+        </Field>
+      </div>
+      <FormError error={error} />
+      <Button type="submit" variant="primary" disabled={busy}>
+        {busy ? "Creating" : "Create login"}
       </Button>
     </form>
   );

@@ -2,7 +2,9 @@
 
 Queued in the same transaction as the edge change they report. They wait
 in edge_outbox while the cloud is unreachable and flush in order on
-reconnect.
+reconnect. Incident and behavior event changes are also copied to the
+Kafka spool for fleet analytics when streaming is enabled; the outbox
+stays the source of truth.
 """
 from __future__ import annotations
 
@@ -16,7 +18,8 @@ from app.db.models.edge.behavior import BehaviorEvent
 from app.db.models.edge.incident import Incident
 from app.db.models.edge.sync import EdgeOutbox
 from app.db.models.edge.training import EdgeQuizResult
-from app.shared.enums import AuditAction, SyncMessageType
+from app.edge.stream.spool import spool_event
+from app.shared.enums import AuditAction, StreamKind, SyncMessageType
 from app.sync.fields import (
     BEHAVIOR_EVENT_FIELDS,
     INCIDENT_FIELDS,
@@ -41,14 +44,16 @@ def queue_task_status(session: AsyncSession, task: EdgeTask) -> None:
     enqueue(session, EdgeOutbox, SyncMessageType.TASK_STATUS, payload, task.task_id)
 
 
-def queue_incident(session: AsyncSession, incident: Incident) -> None:
-    enqueue(session, EdgeOutbox, SyncMessageType.INCIDENT, row_dict(incident, INCIDENT_FIELDS), incident.incident_id)
+async def queue_incident(session: AsyncSession, incident: Incident) -> None:
+    payload = row_dict(incident, INCIDENT_FIELDS)
+    enqueue(session, EdgeOutbox, SyncMessageType.INCIDENT, payload, incident.incident_id)
+    await spool_event(session, StreamKind.INCIDENT, incident.machine_id, sim_now(), payload)
 
 
-def queue_behavior_event(session: AsyncSession, event: BehaviorEvent) -> None:
-    enqueue(
-        session, EdgeOutbox, SyncMessageType.BEHAVIOR_EVENT, row_dict(event, BEHAVIOR_EVENT_FIELDS), event.event_id
-    )
+async def queue_behavior_event(session: AsyncSession, event: BehaviorEvent) -> None:
+    payload = row_dict(event, BEHAVIOR_EVENT_FIELDS)
+    enqueue(session, EdgeOutbox, SyncMessageType.BEHAVIOR_EVENT, payload, event.event_id)
+    await spool_event(session, StreamKind.BEHAVIOR_EVENT, event.machine_id, sim_now(), payload)
 
 
 def queue_quiz_result(session: AsyncSession, result: EdgeQuizResult) -> None:

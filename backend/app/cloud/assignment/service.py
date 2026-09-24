@@ -27,6 +27,7 @@ from app.cloud.assignment.validation import (
     require_unit_for_task,
     require_valid_window,
     shift_end_warning,
+    sign_in_warning,
 )
 from app.cloud.audit.service import record_audit
 from app.cloud.credentials.issuer import issue_for_shift
@@ -44,6 +45,7 @@ from app.db.models.cloud.operator import Operator, OperatorQualification
 from app.db.models.cloud.shift import Shift
 from app.db.models.cloud.sync import CloudOutbox
 from app.db.models.cloud.task import Task
+from app.db.models.cloud.user import User
 from app.shared.enums import AuditAction, SyncMessageType, TaskStatus
 
 log = logging.getLogger("safe2go.assignment")
@@ -52,6 +54,12 @@ log = logging.getLogger("safe2go.assignment")
 @dataclass
 class AssignmentResult:
     task: Task
+    warnings: list[AssignmentWarning] = field(default_factory=list)
+
+
+@dataclass
+class ShiftResult:
+    shift: Shift
     warnings: list[AssignmentWarning] = field(default_factory=list)
 
 
@@ -131,7 +139,7 @@ async def create_shift(
     scheduled_end: datetime,
     weather_forecast: str,
     actor_id: str | None,
-) -> Shift:
+) -> ShiftResult:
     """Validate and create a shift: one operator on one machine."""
     require_valid_window(scheduled_start, scheduled_end)
     await _get(session, Operator, operator_id, "Operator")
@@ -162,11 +170,20 @@ async def create_shift(
     await session.flush()
     queue_shift(session, shift)
     credential = await issue_for_shift(session, shift)
+    warnings: list[AssignmentWarning] = []
     if credential is not None:
         queue_credential(session, credential)
+    else:
+        has_account = (
+            await session.execute(select(User.user_id).where(User.linked_operator_id == operator_id).limit(1))
+        ).scalar_one_or_none() is not None
+        warnings.append(sign_in_warning(operator_id, has_account))
     record_audit(session, actor_id, AuditAction.SHIFT_CREATE, "shift", shift.shift_id)
-    log.info("Shift created", extra={"shift_id": shift.shift_id, "machine_id": machine_id})
-    return shift
+    log.info(
+        "Shift created",
+        extra={"shift_id": shift.shift_id, "machine_id": machine_id, "warnings": [w.code for w in warnings]},
+    )
+    return ShiftResult(shift, warnings)
 
 
 # ---------------------------------------------------------------------------

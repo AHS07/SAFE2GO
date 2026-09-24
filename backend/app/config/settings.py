@@ -51,6 +51,29 @@ class Settings(BaseSettings):
     sync_backoff_max_seconds: float = 60.0
     # A message failing for this long (real time, link up) moves to dead letters.
     sync_dead_letter_after_seconds: float = 3600.0
+
+    # Telemetry streaming to Kafka for fleet analytics. Off: nothing is spooled
+    # and no Kafka client starts. Safety never depends on it either way.
+    kafka_enabled: bool = False
+    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_client_id: str = "safe2go-edge"
+    kafka_topic_telemetry: str = "safe2go.telemetry.raw"
+    kafka_topic_events: str = "safe2go.safety.events"
+    kafka_topic_partitions: int = 3
+    kafka_retention_hours: int = 168
+    kafka_consumer_group: str = "safe2go-cloud-analytics"
+    # Forwarder: records per batch, replay ceiling (records per real second),
+    # pause between empty passes, and retry backoff ceiling (real seconds).
+    stream_batch_size: int = 500
+    stream_max_rate: float = 2000.0
+    stream_poll_seconds: float = 1.0
+    stream_backoff_max_seconds: float = 30.0
+    # Kafka must acknowledge a batch within this many real seconds.
+    stream_send_timeout_seconds: float = 15.0
+    # Spool limit (raw ticks). Above it the oldest unsent ticks are dropped
+    # down to the low-water share, and a gap record reports each drop.
+    stream_spool_max_records: int = 250_000
+    stream_spool_low_water: float = 0.9
     eta_model_path: Path = _DEFAULT_ETA_MODEL_PATH
     content_dir: Path = _DEFAULT_CONTENT_DIR
 

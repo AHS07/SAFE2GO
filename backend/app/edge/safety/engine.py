@@ -349,7 +349,7 @@ class SafetyEngine:
         )
         session.add(incident)
         await session.flush()
-        queue_incident(session, incident)
+        await queue_incident(session, incident)
         log.info(
             "Incident opened",
             extra={
@@ -373,7 +373,7 @@ class SafetyEngine:
         incident.peak_severity = Severity.CRITICAL.value
         incident.escalation_reason = _map_escalation_reason(escalation_reason)
         await session.flush()
-        queue_incident(session, incident)
+        await queue_incident(session, incident)
         log.info(
             "Incident escalated to CRITICAL",
             extra={"incident_id": incident_id, "machine_id": self._machine_id},
@@ -395,7 +395,7 @@ class SafetyEngine:
         incident.event_end = event_end
         incident.status = status_after_hazard_clears(incident.peak_severity, incident.status)
         await session.flush()
-        queue_incident(session, incident)
+        await queue_incident(session, incident)
         log.info(
             "Incident closed",
             extra={

@@ -190,7 +190,7 @@ async def report_incident(
     )
     session.add(incident)
     await session.flush()
-    queue_incident(session, incident)
+    await queue_incident(session, incident)
     queue_audit(session, user.get("sub"), AuditAction.INCIDENT_REPORT, "incident", incident.incident_id)
     await session.commit()
 
@@ -211,7 +211,7 @@ async def acknowledge_incident(
 
     acknowledge(incident, latest_tick(incident.machine_id), operator_id_of(user), sim_now())
     await session.flush()
-    queue_incident(session, incident)
+    await queue_incident(session, incident)
     queue_audit(session, user.get("sub"), AuditAction.INCIDENT_ACKNOWLEDGE, "incident", incident.incident_id)
     await session.commit()
     if incident.status == IncidentStatus.RESOLVED.value:

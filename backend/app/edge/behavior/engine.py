@@ -280,7 +280,7 @@ class BehaviorEngine:
         )
         session.add(row)
         await session.flush()
-        queue_behavior_event(session, row)
+        await queue_behavior_event(session, row)
 
         log.info(
             "Behavior event detected",

@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import admin, assistant, emergency, simulator, system, training
+from app.api.routes import admin, assistant, emergency, pipeline, simulator, system, training
 from app.api.routes.auth import router as auth_router
 from app.api.routes.operator import router as operator_router
 from app.config.settings import get_settings
@@ -17,6 +17,7 @@ from app.core.logging import setup_logging
 from app.core.request_context import REQUEST_ID_HEADER, RequestIdMiddleware
 from app.edge.assistant.retrieval import get_manual_index
 from app.shared.eta_model import get_predictor
+from app.stream.runtime import start_streaming, stop_streaming
 from app.sync.runtime import sync_worker
 
 logger = logging.getLogger("safe2go.main")
@@ -33,7 +34,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Manual search reports the failure per request; nothing else depends on it.
         logger.error("Manual index failed to build", exc_info=exc)
     sync_worker.start()
+    # Optional Kafka streaming (KAFKA_ENABLED); never on the safety path.
+    start_streaming()
     yield
+    await stop_streaming()
     await sync_worker.stop()
     if get_settings().demo_routes_enabled:
         from app.api.routes.simulator import shutdown_simulator
@@ -79,6 +83,7 @@ def create_app() -> FastAPI:
     # System routes (health always available; status/connectivity are dev/demo only)
     app.include_router(system.router)
     app.include_router(admin.router)
+    app.include_router(pipeline.router)
 
     if settings.demo_routes_enabled:
         app.include_router(simulator.router)

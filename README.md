@@ -19,6 +19,7 @@ All machine data is synthetic.
 - Documentation assistant: searches machine manuals, with optional explanations from DeepSeek
 - Shift summary: tasks done, working and idle time, incidents, coaching, and training to review
 - Service suggestions: engine hours since the last service, flagged when a service is due soon or overdue
+- Fleet data pipeline (optional): live telemetry is held on the machine while offline and streamed through Kafka to fleet analytics, paced so a reconnect never floods the cloud
 
 ## How it works
 
@@ -29,6 +30,8 @@ The system has two logical parts:
 
 In the demo, both parts run in one backend process with separate database schemas. A toggle simulates losing the cloud connection. The two parts exchange data only through a sync service with an outbox on each side, so the edge keeps working while the link is cut.
 
+Kafka is optional and only carries a copy of live telemetry to fleet analytics. Safety checks never wait for it.
+
 ## Tech stack
 
 | Area | Technology |
@@ -37,6 +40,7 @@ In the demo, both parts run in one backend process with separate database schema
 | Database | PostgreSQL 16, SQLAlchemy 2.x, Alembic |
 | Machine learning | scikit-learn, pandas, NumPy, joblib |
 | Real-time | FastAPI WebSockets |
+| Telemetry streaming (optional) | Apache Kafka 3.9 in Docker, aiokafka |
 | Documentation assistant | TF-IDF retrieval, DeepSeek API |
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS |
 | Testing | pytest, Vitest |
@@ -148,13 +152,42 @@ python -m scripts.demo_rehearsal --runs 3 --base-url http://127.0.0.1:8000
 
 While the link is cut, operators cannot sign in with a password. The sign-in screen switches to the shift PIN, which is checked on the machine.
 
+## Fleet data pipeline (optional)
+
+Each machine keeps a copy of its live sensor data in a local queue (the spool). A background sender forwards it to Kafka, and a cloud reader stores it for fleet analytics. Safety checks run on the machine and never wait for any of this.
+
+To turn it on:
+
+1. Start Kafka: `docker compose up -d kafka`
+2. Set `KAFKA_ENABLED=true` in `.env`
+3. Restart the backend
+
+What to show:
+
+1. Start the simulator. Open `/admin/pipeline`: records move from the machines to the archive, and the per-minute charts fill in.
+2. Cut the cloud link. The spool grows and the demo bar shows how many records wait. Safety alerts keep working.
+3. Restore the link. The backlog drains at a capped rate while live data keeps flowing, and the page shows the send rate and the time left.
+
+How it stays correct:
+
+- A record leaves the spool only after Kafka confirms it. A record sent twice is stored once.
+- A full spool (250,000 ticks by default, about 23 hours for 3 machines) drops the oldest raw ticks and reports the gap. Incidents are never dropped.
+- If Kafka is down, records wait in the spool and the sender retries.
+
+To check it end to end against a running backend with Kafka on:
+
+```bash
+python -m scripts.pipeline_rehearsal --offline-seconds 60 --base-url http://127.0.0.1:8000
+```
+
 ## Assigning work
 
 The admin screens at `/admin` cover:
 
 - Assignments: shifts, their tasks, create shift, create task, cancel, reassign, and the ETA breakdown. Rejected requests show the reason next to the form. A task planned to finish after the shift ends is saved with a warning.
-- Operators and machines: qualifications, machine status, and service suggestions.
+- Operators and machines: qualifications, logins, machine status, and service suggestions. An operator without a login cannot see assigned work; use Create login to give them a username, password, and PIN.
 - Sync: cloud changes that were undone because the machine had already started the task, and messages that kept failing for an hour and were set aside, with a Retry button.
+- Data pipeline: the Kafka stream from the machines to fleet analytics (see below).
 
 The same actions are available through the admin API under `/api/admin/`. With the backend in dev mode, the interactive API page at `http://localhost:8000/docs` lists every endpoint.
 

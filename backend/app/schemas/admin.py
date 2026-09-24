@@ -45,6 +45,23 @@ class OperatorAdminResponse(BaseModel):
     operator_id: str
     operator_name: str
     qualifications: list[QualificationResponse]
+    # None when the operator has no sign-in account, so cannot see assigned work.
+    username: str | None = None
+
+
+class OperatorAccountCreateRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=100, pattern=r"^[A-Za-z0-9._-]+$")
+    password: str = Field(min_length=6, max_length=72)
+    # Same format as the offline login form.
+    pin: str = Field(min_length=4, max_length=12, pattern=r"^[0-9]+$")
+
+
+class OperatorAccountResponse(BaseModel):
+    operator_id: str
+    user_id: str
+    username: str
+    # Offline credentials issued for the operator's current and upcoming shifts.
+    credentials_issued: int
 
 
 class MachineAdminResponse(BaseModel):
@@ -134,6 +151,10 @@ class AssignmentWarningResponse(BaseModel):
 
 class AssignmentResponse(BaseModel):
     task: TaskAdminResponse
+    warnings: list[AssignmentWarningResponse]
+
+
+class ShiftCreateResponse(ShiftAdminResponse):
     warnings: list[AssignmentWarningResponse]
 
 

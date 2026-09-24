@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from app.cloud.publish import queue_shift
+from app.core.clock import set_sim_time, sim_now
 from app.core.connectivity import set_cloud_reachable
 from app.core.security import create_access_token, hash_password
 from app.db.models.cloud.machine import Machine
@@ -491,3 +492,124 @@ async def test_current_shift_follows_sim_time(admin: AsyncClient, conn: AsyncCon
     assert between.shift_id == later["shift_id"]
     assert after_all.shift_id == later["shift_id"]
     assert before_all.shift_id == site["shift_id"]
+
+
+# ---------------------------------------------------------------------------
+# Operator accounts
+# ---------------------------------------------------------------------------
+
+PIN = "4321"
+
+
+def _account_body(username: str, pin: str = PIN) -> dict:
+    return {"username": username, "password": "operator-pass", "pin": pin}
+
+
+async def test_shift_for_operator_without_account_warns(admin: AsyncClient, site: dict) -> None:
+    operators = {o["operator_id"]: o for o in (await admin.get("/api/admin/operators")).json()}
+    assert operators[site["ops"]["wl_only"]]["username"] is None
+
+    response = await admin.post("/api/admin/shifts", json=_shift_body(site, "wl_only", "wl"))
+    assert response.status_code == 201
+    [warning] = response.json()["warnings"]
+    assert warning["code"] == "NO_OFFLINE_SIGN_IN"
+    assert warning["details"]["has_account"] is False
+
+
+async def test_shift_for_account_without_pin_warns(admin: AsyncClient, conn: AsyncConnection, site: dict) -> None:
+    async with db_session(conn) as session:
+        session.add(User(
+            user_id=str(uuid.uuid4()),
+            role="operator",
+            linked_operator_id=site["ops"]["wl_only"],
+            username=f"nopin-{uuid.uuid4().hex[:8]}",
+            password_hash=hash_password("operator-pass"),
+        ))
+        await session.commit()
+    response = await admin.post("/api/admin/shifts", json=_shift_body(site, "wl_only", "wl"))
+    [warning] = response.json()["warnings"]
+    assert warning["details"]["has_account"] is True
+
+
+async def test_account_lets_operator_see_work_assigned_before_it(
+    admin: AsyncClient, conn: AsyncConnection, site: dict
+) -> None:
+    """The reported case: work assigned to an operator with no login, login created afterwards."""
+    shift = (await admin.post("/api/admin/shifts", json=_shift_body(site, "wl_only", "wl", start_h=0))).json()
+    task = (await admin.post(
+        "/api/admin/tasks", json=_task_body(shift["shift_id"], task_type="material_loading", unit="loads", qty=20)
+    )).json()["task"]
+
+    username = f"wl-{uuid.uuid4().hex[:8]}"
+    saved_clock = sim_now()
+    set_sim_time(T0 + H)
+    try:
+        response = await admin.post(f"/api/admin/operators/{site['ops']['wl_only']}/account", json=_account_body(username))
+        assert response.status_code == 201
+        assert response.json()["credentials_issued"] == 1
+        await deliver_all(lambda: db_session(conn))
+
+        login = await admin.post("/api/auth/offline-login", json={"username": username, "pin": PIN})
+        assert login.status_code == 200
+        assert login.json()["operator_id"] == site["ops"]["wl_only"]
+        token = login.json()["access_token"]
+        tasks = (await admin.get("/api/operator/tasks", headers={"Authorization": f"Bearer {token}"})).json()
+    finally:
+        set_sim_time(saved_clock)
+
+    assert [t["task_id"] for t in tasks] == [task["task_id"]]
+    operators = {o["operator_id"]: o for o in (await admin.get("/api/admin/operators")).json()}
+    assert operators[site["ops"]["wl_only"]]["username"] == username
+    entries = await _audit(conn, "account_create", response.json()["user_id"])
+    assert [e.user_id for e in entries] == [site["admin_id"]]
+
+    # Later shifts get their credential at creation, with no warning.
+    later = await admin.post("/api/admin/shifts", json=_shift_body(site, "wl_only", "wl", start_h=24))
+    assert later.json()["warnings"] == []
+
+
+async def test_account_skips_shifts_that_already_expired(admin: AsyncClient, site: dict) -> None:
+    await admin.post("/api/admin/shifts", json=_shift_body(site, "wl_only", "wl", start_h=0))
+    saved_clock = sim_now()
+    set_sim_time(T0 + 10 * H)  # shift ended 2 h ago, past the 1 h grace
+    try:
+        response = await admin.post(
+            f"/api/admin/operators/{site['ops']['wl_only']}/account", json=_account_body(f"wl-{uuid.uuid4().hex[:8]}")
+        )
+    finally:
+        set_sim_time(saved_clock)
+    assert response.status_code == 201
+    assert response.json()["credentials_issued"] == 0
+
+
+async def test_account_rejects_second_account_and_taken_username(admin: AsyncClient, site: dict) -> None:
+    username = f"op-{uuid.uuid4().hex[:8]}"
+    first = await admin.post(f"/api/admin/operators/{site['ops']['wl_only']}/account", json=_account_body(username))
+    assert first.status_code == 201
+
+    again = await admin.post(
+        f"/api/admin/operators/{site['ops']['wl_only']}/account", json=_account_body(f"x-{uuid.uuid4().hex[:8]}")
+    )
+    assert (again.status_code, _code(again)) == (400, "VALIDATION_ERROR")
+
+    taken = await admin.post(f"/api/admin/operators/{site['ops']['ex_expert']}/account", json=_account_body(username))
+    assert (taken.status_code, _code(taken)) == (400, "VALIDATION_ERROR")
+    assert taken.json()["error"]["details"]["fields"][0]["field"] == "username"
+
+
+async def test_account_input_is_validated(admin: AsyncClient, site: dict) -> None:
+    missing = await admin.post(f"/api/admin/operators/{uuid.uuid4()}/account", json=_account_body("someone"))
+    assert (missing.status_code, _code(missing)) == (404, "NOT_FOUND")
+
+    bad_pin = await admin.post(f"/api/admin/operators/{site['ops']['wl_only']}/account", json=_account_body("someone", "12ab"))
+    assert (bad_pin.status_code, _code(bad_pin)) == (400, "VALIDATION_ERROR")
+
+
+async def test_operator_role_cannot_create_accounts(admin: AsyncClient, site: dict) -> None:
+    token = create_access_token(user_id=str(uuid.uuid4()), role="operator", operator_id=site["ops"]["ex_mid"])
+    response = await admin.post(
+        f"/api/admin/operators/{site['ops']['wl_only']}/account",
+        json=_account_body("someone"),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403

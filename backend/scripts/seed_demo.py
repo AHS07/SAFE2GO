@@ -13,9 +13,11 @@ Creates:
 Everything reaches the edge the same way as in production: the cloud queues
 messages in its outbox and the sync step delivers them.
 
-Rerunning first removes the previous demo run (live shifts, demo users,
-synced edge copies, outboxes, audit log) and keeps the generated history,
-so a clean demo takes seconds instead of a full regenerate.
+Rerunning first removes the previous demo run (live shifts, all user
+accounts including ones the admin created, synced edge copies, outboxes,
+audit log) and keeps the generated history, so a clean demo takes seconds
+instead of a full regenerate. Only the three demo operators are deleted;
+generated operators keep their records even if the admin gave them a login.
 
 Run after the batch generator and training:
     python -m scripts.seed_demo
@@ -42,6 +44,12 @@ from app.db.models.cloud.edge_records import CloudBehaviorEvent, CloudIncident
 from app.db.models.cloud.machine import Machine
 from app.db.models.cloud.operator import Operator, OperatorQualification
 from app.db.models.cloud.shift import Shift
+from app.db.models.cloud.stream import (
+    FleetMinuteRollup,
+    StreamEvent,
+    TelemetryArchive,
+    TelemetryGap,
+)
 from app.db.models.cloud.sync import CloudDeadLetter, CloudInbox, CloudOutbox
 from app.db.models.cloud.task import Task
 from app.db.models.cloud.training import QuizResult
@@ -58,6 +66,7 @@ from app.db.models.edge.assignment import (
 )
 from app.db.models.edge.behavior import BehaviorEvent, Recommendation
 from app.db.models.edge.incident import Incident
+from app.db.models.edge.stream import StreamSpool
 from app.db.models.edge.sync import EdgeDeadLetter, EdgeInbox, EdgeOutbox
 from app.db.models.edge.telemetry import Telemetry
 from app.db.models.edge.training import EdgeAnomalyTrainingMap, EdgeQuizResult, EdgeTrainingModule
@@ -111,6 +120,7 @@ _EDGE_COPIES = (
     EdgeInbox,
     EdgeOutbox,
     EdgeDeadLetter,
+    StreamSpool,
 )
 
 
@@ -126,6 +136,9 @@ async def clear_previous_demo(session: AsyncSession) -> None:
     for model in _EDGE_COPIES:
         await session.execute(delete(model))
 
+    # The Kafka analytics tables only ever hold live demo data.
+    for model in (TelemetryArchive, TelemetryGap, StreamEvent, FleetMinuteRollup):
+        await session.execute(delete(model))
     for model in (SyncConflict, CloudIncident, CloudBehaviorEvent, AuditLog, CloudOutbox, CloudInbox, CloudDeadLetter):
         await session.execute(delete(model))
     for model in (Task, ShiftSummary, OfflineCredential):
@@ -133,8 +146,11 @@ async def clear_previous_demo(session: AsyncSession) -> None:
     await session.execute(delete(Shift).where(Shift.shift_id.in_(live_shifts)))
     await session.execute(delete(QuizResult).where(QuizResult.operator_id.in_(demo_operators)))
 
+    # Generated operators can have a login too (created by the admin), but their
+    # history must stay; only the operators this script created are removed.
+    demo_usernames = [username for username, _name, _skill in _DEMO_OPERATORS]
     operator_ids = list((await session.execute(select(User.linked_operator_id).where(
-        User.linked_operator_id.is_not(None)))).scalars().all())
+        User.linked_operator_id.is_not(None)).where(User.username.in_(demo_usernames)))).scalars().all())
     await session.execute(delete(User))
     await session.execute(delete(Operator).where(Operator.operator_id.in_(operator_ids)))
     await session.flush()
@@ -205,7 +221,7 @@ async def _create_shifts(
     start = sim_now().replace(second=0, microsecond=0) - _SHIFT_LEAD
     for (op, _skill), machine in zip(operators, machines, strict=True):
         # Same validated path as the admin API: rules, ETA, audit, outbox, credential.
-        shift = await create_shift(
+        shift = (await create_shift(
             session,
             operator_id=op.operator_id,
             machine_id=machine.machine_id,
@@ -213,7 +229,7 @@ async def _create_shifts(
             scheduled_end=start + _SHIFT_LENGTH,
             weather_forecast=WeatherCategory.CLEAR.value,
             actor_id=admin.user_id,
-        )
+        )).shift
         for task_type, quantity, unit, material in _DEMO_TASKS:
             await create_task(
                 session,

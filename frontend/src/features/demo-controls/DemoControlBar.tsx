@@ -39,6 +39,19 @@ function SyncBadge(): React.ReactElement | null {
   );
 }
 
+/** Live ticks held on the machine for Kafka; they drain, paced, once the link is back. */
+function SpoolBadge(): React.ReactElement | null {
+  const { pending } = useDemo();
+  const spooled = pending?.stream ?? 0;
+  if (spooled === 0) return null;
+  return (
+    <Badge tone="info">
+      <Icon name="pending_actions" className="text-sm" />
+      {spooled.toLocaleString()} spooled for fleet analytics
+    </Badge>
+  );
+}
+
 function StatusStrip(): React.ReactElement {
   const { incidents, status, degradedRules } = useMachine();
   const open = incidents.filter((i) => i.status !== "resolved").length;
@@ -59,6 +72,7 @@ function StatusStrip(): React.ReactElement {
         <Badge tone="warning">No live sensor data</Badge>
       )}
       <SyncBadge />
+      <SpoolBadge />
       {degradedRules.map((rule) => (
         <Badge key={rule} tone="warning">
           {label(rule)} check unavailable

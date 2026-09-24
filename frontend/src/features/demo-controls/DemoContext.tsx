@@ -15,8 +15,9 @@ export interface DemoContextValue {
   available: boolean;
   sim: SimStatus | null;
   cloudReachable: boolean | null;
-  /** Sync messages waiting in each outbox; they flush when the cloud link is back. */
-  pending: { cloud: number; edge: number } | null;
+  /** Sync messages waiting in each outbox; they flush when the cloud link is back.
+   *  stream: records waiting in the edge spool for Kafka (null when streaming is off). */
+  pending: { cloud: number; edge: number; stream: number | null } | null;
   busy: boolean;
   error: unknown;
   start: () => Promise<void>;
@@ -41,7 +42,11 @@ export function DemoProvider({ children }: { children: React.ReactNode }): React
       const [simStatus, system] = await Promise.all([demoApi.simStatus(), demoApi.systemStatus()]);
       setSim(simStatus);
       setCloud(system.cloud_reachable);
-      setPending({ cloud: system.cloud_outbox_pending, edge: system.edge_outbox_pending });
+      setPending({
+        cloud: system.cloud_outbox_pending,
+        edge: system.edge_outbox_pending,
+        stream: system.stream_spool_pending ?? null,
+      });
       setAvailable(true);
     } catch (err) {
       if (err instanceof ApiError && err.status === HTTP_NOT_FOUND) setAvailable(false);

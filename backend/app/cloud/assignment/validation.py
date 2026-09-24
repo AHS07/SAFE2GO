@@ -21,6 +21,7 @@ from app.shared.compatibility import TASK_UNIT, is_compatible
 from app.shared.enums import MachineStatus, TaskType
 
 SHIFT_END_EXCEEDED = "SHIFT_END_EXCEEDED"
+NO_OFFLINE_SIGN_IN = "NO_OFFLINE_SIGN_IN"
 
 
 @dataclass(frozen=True)
@@ -156,4 +157,20 @@ def shift_end_warning(task_end: datetime, shift_end: datetime) -> AssignmentWarn
         code=SHIFT_END_EXCEEDED,
         message=f"Planned finish is {overrun:g} min after the shift ends.",
         details={"overrun_minutes": overrun, "shift_end": shift_end.isoformat()},
+    )
+
+
+def sign_in_warning(operator_id: str, has_account: bool) -> AssignmentWarning:
+    """A shift whose operator has no PIN gets no offline credential. Allowed, with a warning."""
+    if has_account:
+        message = "The operator has no PIN, so they cannot sign in on the machine while the cloud link is down."
+    else:
+        message = (
+            "The operator has no sign-in account, so they cannot see this shift on the machine. "
+            "Create one under Operators and machines."
+        )
+    return AssignmentWarning(
+        code=NO_OFFLINE_SIGN_IN,
+        message=message,
+        details={"operator_id": operator_id, "has_account": has_account},
     )

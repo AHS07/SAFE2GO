@@ -6,7 +6,18 @@ import type { AdminShift, AdminTask } from "@/shared/types/api";
 import { mockFetch, signIn, SIM_STATUS, SYSTEM_STATUS } from "./harness";
 
 const OPERATORS = [
-  { operator_id: "op-1", operator_name: "Alex Beginner", qualifications: [{ machine_type: "excavator", skill_level: "beginner" }] },
+  {
+    operator_id: "op-1",
+    operator_name: "Alex Beginner",
+    qualifications: [{ machine_type: "excavator", skill_level: "beginner" }],
+    username: "op_beginner",
+  },
+  {
+    operator_id: "op-2",
+    operator_name: "Ravi Khan",
+    qualifications: [{ machine_type: "excavator", skill_level: "intermediate" }],
+    username: null,
+  },
 ];
 const MACHINES = [
   { machine_id: "m-1", machine_model: "EX-20", machine_type: "excavator", machine_status: "available", machine_age: 3, bucket_capacity: 1.2 },
@@ -182,5 +193,58 @@ describe("Admin assignments", () => {
     render(<App />);
     expect(await screen.findByText(/The reassignment was undone/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mark reviewed" })).toBeInTheDocument();
+  });
+
+  it("warns when the shift's operator has no login", async () => {
+    adminRoutes({
+      "POST /api/admin/shifts": {
+        ...SHIFT,
+        shift_id: "sh-2",
+        operator_id: "op-2",
+        warnings: [
+          {
+            code: "NO_OFFLINE_SIGN_IN",
+            message: "The operator has no sign-in account, so they cannot see this shift on the machine.",
+            details: {},
+          },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+    render(<App />);
+
+    const form = await screen.findByRole("form", { name: "New shift" });
+    const operator = within(form).getByLabelText("Operator");
+    expect(within(operator).getByRole("option", { name: /Ravi Khan.*no login/ })).toBeInTheDocument();
+    expect(within(operator).getByRole("option", { name: /Alex Beginner/ })).not.toHaveTextContent("no login");
+    await user.selectOptions(operator, "op-2");
+    await user.selectOptions(within(form).getByLabelText("Machine"), "m-1");
+    await user.click(within(form).getByRole("button", { name: "Create shift" }));
+
+    expect(await within(form).findByText(/has no sign-in account/)).toBeInTheDocument();
+  });
+
+  it("creates a login for an operator from the operators page", async () => {
+    const calls = adminRoutes({
+      "GET /api/admin/machines": [],
+      "POST /api/admin/operators/op-2/account": {
+        operator_id: "op-2", user_id: "u-2", username: "ravi_khan", credentials_issued: 1,
+      },
+    });
+    window.history.pushState({}, "", "/admin/fleet");
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(await screen.findByText("op_beginner")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Create login" }));
+    const form = await screen.findByRole("form", { name: "Login for Ravi Khan" });
+    expect(within(form).getByLabelText("Username")).toHaveValue("ravi_khan");
+    await user.type(within(form).getByLabelText("Password"), "secret1");
+    await user.type(within(form).getByLabelText("PIN (offline)"), "1234");
+    await user.click(within(form).getByRole("button", { name: "Create login" }));
+
+    expect(await screen.findByText(/Login created: ravi_khan. Offline sign-in issued for 1 current or upcoming shift\./)).toBeInTheDocument();
+    const sent = calls.find((c) => c.method === "POST" && c.url === "/api/admin/operators/op-2/account");
+    expect(sent?.body).toEqual({ username: "ravi_khan", password: "secret1", pin: "1234" });
   });
 });

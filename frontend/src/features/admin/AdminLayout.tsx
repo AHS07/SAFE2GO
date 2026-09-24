@@ -15,6 +15,7 @@ const NAV: { to: string; label: string; icon: IconName; end: boolean }[] = [
   { to: "/admin", label: "Assignments", icon: "assignment", end: true },
   { to: "/admin/fleet", label: "Operators and machines", icon: "groups", end: false },
   { to: "/admin/conflicts", label: "Sync", icon: "sync_problem", end: false },
+  { to: "/admin/pipeline", label: "Data pipeline", icon: "insights", end: false },
 ];
 
 function SyncState(): React.ReactElement | null {

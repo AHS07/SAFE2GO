@@ -8,7 +8,12 @@ import type {
   AssignmentResponse,
   DeadLetter,
   EtaBreakdown,
+  MachineRollup,
+  OperatorAccount,
+  OperatorAccountCreate,
+  PipelineStatus,
   ShiftCreate,
+  ShiftCreateResponse,
   ShiftReport,
   SyncConflict,
   TaskCreate,
@@ -18,11 +23,14 @@ const id = encodeURIComponent;
 
 export const adminApi = {
   operators: (token: string) => apiClient.get<AdminOperator[]>("/api/admin/operators", { token }),
+  createOperatorAccount: (token: string, operatorId: string, body: OperatorAccountCreate) =>
+    apiClient.post<OperatorAccount>(`/api/admin/operators/${id(operatorId)}/account`, body, { token }),
   machines: (token: string) => apiClient.get<AdminMachine[]>("/api/admin/machines", { token }),
   shifts: (token: string) => apiClient.get<AdminShift[]>("/api/admin/shifts?limit=50", { token }),
   shiftTasks: (token: string, shiftId: string) =>
     apiClient.get<AdminTask[]>(`/api/admin/shifts/${id(shiftId)}/tasks`, { token }),
-  createShift: (token: string, body: ShiftCreate) => apiClient.post<AdminShift>("/api/admin/shifts", body, { token }),
+  createShift: (token: string, body: ShiftCreate) =>
+    apiClient.post<ShiftCreateResponse>("/api/admin/shifts", body, { token }),
   createTask: (token: string, body: TaskCreate) =>
     apiClient.post<AssignmentResponse>("/api/admin/tasks", body, { token }),
   cancelTask: (token: string, taskId: string) =>
@@ -45,6 +53,9 @@ export const adminApi = {
       undefined,
       { token }
     ),
+  pipeline: (token: string) => apiClient.get<PipelineStatus>("/api/admin/pipeline", { token }),
+  pipelineRollups: (token: string, minutes: number) =>
+    apiClient.get<MachineRollup[]>(`/api/admin/pipeline/rollups?minutes=${minutes}`, { token }),
   resolveConflict: (token: string, conflictId: string) =>
     apiClient.post<SyncConflict>(`/api/admin/conflicts/${id(conflictId)}/resolve`, undefined, { token }),
 };

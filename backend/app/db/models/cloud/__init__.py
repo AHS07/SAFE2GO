@@ -10,6 +10,12 @@ from app.db.models.cloud.edge_records import CloudBehaviorEvent, CloudIncident
 from app.db.models.cloud.machine import Machine
 from app.db.models.cloud.operator import Operator, OperatorQualification
 from app.db.models.cloud.shift import Shift
+from app.db.models.cloud.stream import (
+    FleetMinuteRollup,
+    StreamEvent,
+    TelemetryArchive,
+    TelemetryGap,
+)
 from app.db.models.cloud.sync import CloudDeadLetter, CloudInbox, CloudOutbox
 from app.db.models.cloud.task import Task
 from app.db.models.cloud.training import AnomalyTrainingMap, QuizResult, TrainingModule
@@ -37,4 +43,8 @@ __all__ = [
     "AuditLog",
     "OfflineCredential",
     "User",
+    "TelemetryArchive",
+    "TelemetryGap",
+    "StreamEvent",
+    "FleetMinuteRollup",
 ]

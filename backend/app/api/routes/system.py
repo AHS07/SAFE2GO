@@ -14,6 +14,7 @@ from app.config.settings import Settings, get_settings
 from app.core.clock import sim_now
 from app.core.connectivity import is_cloud_reachable, set_cloud_reachable
 from app.db.session import get_db
+from app.edge.stream.spool import backlog_total
 from app.shared.enums import AuditAction
 from app.sync.worker import CLOUD_TO_EDGE, EDGE_TO_CLOUD, pending_count
 
@@ -59,6 +60,8 @@ class StatusResponse(BaseModel):
     # Messages waiting in each outbox (queued while the cloud link is cut).
     cloud_outbox_pending: int
     edge_outbox_pending: int
+    # Records waiting in the edge spool for Kafka; None when streaming is off.
+    stream_spool_pending: int | None = None
 
 
 @router.get("/status", response_model=StatusResponse, dependencies=[Depends(_require_demo)])
@@ -74,6 +77,7 @@ async def system_status(
         app_env=settings.app_env,
         cloud_outbox_pending=await pending_count(session, CLOUD_TO_EDGE),
         edge_outbox_pending=await pending_count(session, EDGE_TO_CLOUD),
+        stream_spool_pending=await backlog_total(session) if settings.kafka_enabled else None,
     )
 
 

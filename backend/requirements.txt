@@ -30,6 +30,9 @@ httpx==0.28.0
 # Config
 PyYAML==6.0.2
 
+# Telemetry streaming to Kafka (optional, KAFKA_ENABLED)
+aiokafka==0.14.0
+
 # Dev / test
 pytest==8.3.4
 pytest-asyncio==0.24.0

@@ -173,6 +173,8 @@ export interface SystemStatus {
   app_env: string;
   cloud_outbox_pending: number;
   edge_outbox_pending: number;
+  /** Records waiting in the edge spool for Kafka; null when streaming is off. */
+  stream_spool_pending?: number | null;
 }
 
 export interface Health {
@@ -265,6 +267,22 @@ export interface AdminOperator {
   operator_id: string;
   operator_name: string;
   qualifications: { machine_type: string; skill_level: string }[];
+  /** null when the operator has no sign-in account and cannot see assigned work. */
+  username: string | null;
+}
+
+export interface OperatorAccountCreate {
+  username: string;
+  password: string;
+  pin: string;
+}
+
+export interface OperatorAccount {
+  operator_id: string;
+  user_id: string;
+  username: string;
+  /** Offline sign-ins issued for the operator's current and upcoming shifts. */
+  credentials_issued: number;
 }
 
 export interface AdminMachine {
@@ -321,6 +339,83 @@ export interface AssignmentWarning {
 export interface AssignmentResponse {
   task: AdminTask;
   warnings: AssignmentWarning[];
+}
+
+export interface ShiftCreateResponse extends AdminShift {
+  warnings: AssignmentWarning[];
+}
+
+// ---------------------------------------------------------------------------
+// Data pipeline (edge spool -> Kafka -> cloud analytics)
+// ---------------------------------------------------------------------------
+
+export type ForwarderState = "disabled" | "stopped" | "link_down" | "connecting" | "broker_down" | "draining" | "idle";
+export type ConsumerState = "stopped" | "connecting" | "broker_down" | "running";
+
+export interface PipelineStatus {
+  enabled: boolean;
+  bootstrap_servers: string;
+  topics: string[];
+  forwarder: {
+    state: ForwarderState;
+    sent_total: number;
+    failed_total: number;
+    dropped_total: number;
+    gaps_total: number;
+    send_rate: number;
+    arrival_rate: number;
+    max_rate: number;
+    last_sent_at: string | null;
+    last_error: string | null;
+    last_error_at: string | null;
+    retry_in_seconds: number | null;
+  };
+  spool: {
+    total: number;
+    by_kind: Record<string, number>;
+    by_machine: { machine_id: string; records: number; oldest_event_time: string }[];
+    oldest_age_seconds: number | null;
+    bytes: number;
+    limit: number;
+    drain_eta_seconds: number | null;
+    write_failures: number;
+  };
+  consumer: {
+    state: ConsumerState;
+    received_total: number;
+    stored_total: number;
+    duplicates_total: number;
+    malformed_total: number;
+    lag: number | null;
+    last_batch_at: string | null;
+    last_error: string | null;
+    last_error_at: string | null;
+  };
+  archive: {
+    ticks: number;
+    machines: number;
+    first_ts: string | null;
+    last_ts: string | null;
+    dropped_total: number;
+    recent_gaps: { machine_id: string; from_ts: string; to_ts: string; dropped_count: number; dropped_at: string }[];
+    events_by_type: { kind: string; event_type: string; count: number }[];
+  };
+}
+
+export interface RollupPoint {
+  bucket_start: string;
+  ticks: number;
+  engine_on_ticks: number;
+  working_ticks: number;
+  idle_ticks: number;
+  avg_rpm: number;
+  fuel_used: number;
+  load_cycles: number;
+}
+
+export interface MachineRollup {
+  machine_id: string;
+  points: RollupPoint[];
 }
 
 export interface ShiftCreate {

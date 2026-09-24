@@ -112,10 +112,10 @@ async def site(conn: AsyncConnection) -> AsyncIterator[dict]:
 
         shifts, tasks = [], []
         for operator_id, machine in ((op_a, machines[0]), (op_b, machines[1])):
-            shift = await create_shift(
+            shift = (await create_shift(
                 session, operator_id=operator_id, machine_id=machine.machine_id,
                 scheduled_start=T0, scheduled_end=T0 + 8 * H, weather_forecast="clear", actor_id=admin.user_id,
-            )
+            )).shift
             result = await create_task(session, TaskDraft(
                 shift_id=shift.shift_id, task_type="excavation", target_quantity=30.0,
                 quantity_unit="m3", material_type="clay",
@@ -230,11 +230,11 @@ async def test_cloud_handlers_are_idempotent_without_the_inbox(
 
 async def test_older_task_message_never_overwrites_newer(conn: AsyncConnection, site: dict) -> None:
     async with db_session(conn) as session:
-        target = await create_shift(
+        target = (await create_shift(
             session, operator_id=site["ops"][0], machine_id=site["machines"][0],
             scheduled_start=T0 + 24 * H, scheduled_end=T0 + 32 * H, weather_forecast="clear",
             actor_id=site["admin_id"],
-        )
+        )).shift
         await reassign_task(session, site["tasks"][0], target_shift_id=target.shift_id,
                             scheduled_start=None, actor_id=site["admin_id"])
         await session.commit()

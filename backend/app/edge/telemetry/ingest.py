@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import set_sim_time
 from app.db.models.edge.telemetry import Telemetry
+from app.edge.stream.spool import spool_tick
 from app.schemas.telemetry import TelemetryTick
 
 log = logging.getLogger("safe2go.ingest")
@@ -85,6 +86,9 @@ async def ingest_tick(
     )
     session.add(row)
     await session.flush()
+    # Kafka copy for fleet analytics. Local write only, isolated in a
+    # savepoint: it never delays or fails the safety path below.
+    await spool_tick(session, tick, row.telemetry_id)
 
     _stats.accepted += 1
 
